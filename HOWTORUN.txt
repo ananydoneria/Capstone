@@ -1,0 +1,119 @@
+================================================================================
+ CAPSTONE3 - HOW TO RUN (training PC + after training)
+================================================================================
+Hybrid neuro-symbolic trading system, NSE Auto sector.
+GNN (supply-chain shock propagation) + local LLM (filing sentiment) -> PPO
+portfolio manager in a cost-realistic simulated Indian exchange.
+
+TIP: opening a Claude Code chat in this folder auto-loads CLAUDE.md, which
+contains the full project state and the same runbook - just say
+"continue with the workstation runbook".
+
+--------------------------------------------------------------------------------
+ 0. SETUP ON A NEW PC (once)
+--------------------------------------------------------------------------------
+Requires Python 3.11+ and (for sentiment) Ollama from https://ollama.com
+
+    cd Capstone3
+    python -m venv .venv
+    .venv\Scripts\activate                      (Windows)
+    pip install -r requirements.txt
+    ollama pull llama3.2:3b-instruct-q4_K_M
+
+CPU-only torch is fine (the GNN is tiny; PPO MlpPolicy is small). For faster
+PPO on the RTX 3090 optionally install the CUDA wheel first:
+    pip install torch --index-url https://download.pytorch.org/whl/cu121
+
+HOW DID THIS FOLDER GET HERE?
+  a) Copied the whole folder (incl. data/ and src/models/gnn/weights/):
+     verify with   python -m pytest tests -q   -> "32 passed" means everything
+     transferred; skip to step 2.
+  b) Git clone / copied without data: data/ and GNN weights are git-ignored,
+     regenerate them (needs internet, ~3 min):
+         python scripts/run_phase1.py
+         python scripts/train_gnn.py
+         python scripts/cache_gnn_scores.py
+         python scripts/build_state.py
+     then run the tests as above.
+
+--------------------------------------------------------------------------------
+ 1. SANITY CHECK (any time)
+--------------------------------------------------------------------------------
+    python -m pytest tests -q          -> expect 32 passed
+    python -m src.rl_agent.baselines   -> prints buy&hold / equal-weight /
+                                          momentum results on the test window
+
+--------------------------------------------------------------------------------
+ 2. TRAINING RUN (the part that needs this PC)
+--------------------------------------------------------------------------------
+Either one command for everything:
+
+    python scripts/run_all.py --heavy
+
+Or stage by stage (recommended first time, so failures are obvious):
+
+  2.1  python scripts/fetch_announcements.py
+       Downloads ~3 years of NSE filings for all 15 tickers (~800 polite
+       requests). NSE sometimes throttles: the script skips failures and is
+       RESUME-SAFE - just re-run it until it reports 0 new month files.
+
+  2.2  python scripts/run_sentiment.py
+       Needs Ollama running (ollama serve starts automatically on Windows).
+       Scores every filing with the local 3B model. Resume-safe per ticker.
+
+  2.3  python scripts/build_state.py
+       MUST print "source: llm_cache". If it says "neutral_placeholder",
+       step 2.2 did not produce sentiment - do not proceed.
+
+  2.4  Train all four ablation arms (THE core experiment):
+       python scripts/train_ppo.py --ablation full
+       python scripts/train_ppo.py --ablation no-gnn
+       python scripts/train_ppo.py --ablation no-sentiment
+       python scripts/train_ppo.py --ablation neither
+       2M timesteps each; progress bar + TensorBoard logs in
+       src/rl_agent/logs/ppo_<arm>/. Watch live with:
+       tensorboard --logdir src/rl_agent/logs
+
+  2.5  python scripts/evaluate.py     (out-of-sample test replay, all arms)
+  2.6  python scripts/report.py      (writes REPORT.md + equity_curves.png)
+
+--------------------------------------------------------------------------------
+ 3. AFTER TRAINING - READING THE RESULTS
+--------------------------------------------------------------------------------
+  REPORT.md            The headline table: 4 PPO arms vs 3 baselines
+                       (total return, CAGR, Sharpe, Sortino, MaxDD, turnover)
+                       on the untouched Jan-Jun 2026 test window.
+  equity_curves.png    Daily equity paths: PPO arms solid, baselines dashed.
+  The thesis wins if:  "full" beats "neither" (hybrid state adds value), and
+                       ideally beats momentum (+12.95%, Sharpe 1.02 - the bar).
+  src/rl_agent/logs/ppo_<arm>/test_metrics.json   raw numbers per arm
+  Everything is seeded (seed 42 in config.yaml): rerunning training
+  reproduces the same results bit-for-bit on the same hardware.
+
+--------------------------------------------------------------------------------
+ 4. OPTIONAL - DAILY PAPER TRADING (after training; NO real orders)
+--------------------------------------------------------------------------------
+Once per trading day, evening (~18:30 IST or later):
+
+    python scripts/paper_trade.py                (add --no-llm if no Ollama)
+
+  - fills yesterday's recommendation at today's open (hypothetically),
+  - fetches today's bars + filings, runs GNN + LLM + policy,
+  - prints tomorrow's target weights as an order list,
+  - appends running equity to src/rl_agent/logs/paper/ledger.csv.
+The ledger is the live effectiveness record. Broker connectivity (Kotak Neo)
+is deliberately NOT implemented - see CLAUDE.md Phase 8b before considering it.
+
+--------------------------------------------------------------------------------
+ 5. TROUBLESHOOTING
+--------------------------------------------------------------------------------
+- fetch_announcements gets many WARN lines: NSE throttling. Re-run later;
+  already-fetched months are cached. If it never works from this network,
+  swap requests for curl_cffi (impersonate="chrome") in
+  src/models/llm/announcements_ingest.py, or accept neutral sentiment and
+  document the limitation.
+- run_sentiment errors instantly: Ollama not running or model not pulled
+  (ollama list should show llama3.2:3b-instruct-q4_K_M).
+- train_ppo warns "sentiment is a neutral placeholder": you skipped 2.2/2.3.
+- Anything else: open a Claude Code chat here; CLAUDE.md carries full context.
+================================================================================

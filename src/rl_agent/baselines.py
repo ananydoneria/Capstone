@@ -44,7 +44,8 @@ def _replay(cfg: Config, state: StateCache, split: str, weight_fn) -> dict:
         equity_curve.append(equity)
         if equity < BANKRUPTCY_FRACTION * portfolio.initial_cash:
             break
-    return compute_metrics(equity_curve, turnover_total)
+    return {"metrics": compute_metrics(equity_curve, turnover_total),
+            "equity_curve": [round(e, 2) for e in equity_curve]}
 
 
 def _equal(n: int) -> np.ndarray:
@@ -84,6 +85,7 @@ def run_all(cfg: Config | None = None, split: str = "test") -> dict[str, dict]:
 
 
 if __name__ == "__main__":
-    for name, m in run_all().items():
+    for name, r in run_all().items():
+        m = r["metrics"]
         print(f"{name:13s} total {m['total_return_pct']:+7.2f}%  sharpe {m['sharpe']:+.2f}  "
               f"maxDD {m['max_drawdown_pct']:.1f}%  turnover {m['turnover_x_equity']:.1f}x")

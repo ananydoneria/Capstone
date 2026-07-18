@@ -38,14 +38,15 @@ def main() -> None:
         "|" + "---|" * (len(METRIC_COLS) + 1),
     ]
 
+    curves, baseline_curves = {}, {}
     baselines_file = LOGS_DIR / "baselines_test.json"
     if baselines_file.exists():
-        for name, m in json.loads(baselines_file.read_text()).items():
-            lines.append(_row(name, m))
+        for name, r in json.loads(baselines_file.read_text()).items():
+            lines.append(_row(name, r["metrics"]))
+            baseline_curves[name] = r["equity_curve"]
     else:
         lines.append("| _baselines not run_ |" + " |" * len(METRIC_COLS))
 
-    curves = {}
     for arm in ABLATIONS:
         mfile = LOGS_DIR / f"ppo_{arm}" / "test_metrics.json"
         if mfile.exists():
@@ -57,14 +58,16 @@ def main() -> None:
         else:
             lines.append(_row(f"PPO {arm} — _not trained_", {}))
 
-    if curves:
+    if curves or baseline_curves:
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots(figsize=(10, 5))
         for name, curve in curves.items():
-            ax.plot(range(len(curve)), curve, label=name)
+            ax.plot(range(len(curve)), curve, label=name, linewidth=2)
+        for name, curve in baseline_curves.items():
+            ax.plot(range(len(curve)), curve, label=name, linestyle="--", alpha=0.7)
         ax.set_xlabel("test day")
         ax.set_ylabel("equity (INR)")
         ax.legend()

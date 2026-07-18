@@ -108,7 +108,12 @@ this 15-node GNN; do NOT bother with CUDA wheels for it.
 
 ### Optional / post-capstone (user requested 2026-07-19 — "leave the door open")
 
-- [ ] **Phase 8a — daily paper-trading loop.** Evening script (post-close):
+- [x] **Phase 8a CODE — daily paper-trading loop** (src/rl_agent/paper_trade.py
+      + scripts/paper_trade.py): fills yesterday's pending at today's open,
+      fresh bars/filings -> GNN + LLM (graceful --no-llm) -> policy -> printed
+      order list + ledger.csv + paper_state.json. Loads VecNormalize stats via
+      pickle and normalizes obs manually (obs layout mirrors exchange_env._obs
+      — keep them in sync if obs ever changes!). Original design note:
       pull today's OHLCV bar + today's NSE announcements, compute the day's
       feature row, one GNN forward, LLM-score the filings, feed the trained
       PPO policy -> print target weights + the buy/sell order list for
@@ -127,6 +132,25 @@ this 15-node GNN; do NOT bother with CUDA wheels for it.
       Design seam already exists: Portfolio.rebalance produces the target
       trade list — a broker adapter would consume the same list.
 
+## FIRST ACTION on a new machine (fresh agent: start here)
+
+You may be running on the user's GPU workstation (RTX 3090) — the user moved
+here specifically TO TRAIN. Orient in this order:
+
+1. `.venv` missing? `python -m venv .venv` then
+   `.venv/Scripts/python -m pip install -r requirements.txt`
+   (CPU torch fine; CUDA wheel optional for speed).
+2. `.venv/Scripts/python -m pytest tests -q` → **32 passed** = artifacts all
+   present, jump to the runbook below. Tests SKIPPED = data/weights missing
+   (they're git-ignored; folder-copy carries them, git clone doesn't):
+   regenerate with `run_phase1.py`, `train_gnn.py`, `cache_gnn_scores.py`,
+   `build_state.py` (all cheap), then re-run tests.
+3. Check `src/rl_agent/logs/ppo_*/model.zip`: if present, training already
+   happened — don't redo it, go to evaluate/report/paper-trade instead.
+4. Then execute the runbook below. HOWTORUN.txt is the user-facing mirror of
+   it. The user's decisions and all guardrails are earlier in this file —
+   respect them (esp.: LLM temp 0.0, no inference in RL loop, seed 42).
+
 ## Workstation runbook (next session, in order)
 
 1. `ollama pull llama3.2:3b-instruct-q4_K_M`
@@ -140,7 +164,9 @@ this 15-node GNN; do NOT bother with CUDA wheels for it.
    `no-sentiment`, `neither` — or all heavy stages: `python scripts/run_all.py --heavy`
    (MlpPolicy PPO is small; CPU-only works too, just slower)
 6. `python scripts/evaluate.py` then `python scripts/report.py`
-7. Tests anytime: `.venv/Scripts/python -m pytest tests/ -q` (31 tests)
+7. Tests anytime: `.venv/Scripts/python -m pytest tests/ -q` (32 tests)
+8. Optional after training: `python scripts/paper_trade.py` daily (Phase 8a,
+   built & smoke-tested; exits cleanly until a trained model exists)
 
 ## Gotchas
 
