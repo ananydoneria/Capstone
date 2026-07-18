@@ -117,6 +117,7 @@ class EnvCfg(BaseModel):
 class RlCfg(BaseModel):
     algo: str
     policy: str
+    episode_length_days: int
     total_timesteps: int
     n_envs: int
     n_steps: int

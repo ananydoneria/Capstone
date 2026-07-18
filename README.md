@@ -31,3 +31,29 @@ pytest                            # Phase 0 gate
 
 All tunables (universe, dates, seed, costs, hyperparameters) live in
 [config.yaml](config.yaml). Data and library provenance: [Sources.md](Sources.md).
+
+## Pipeline
+
+```bash
+python scripts/run_all.py            # cheap stages: data -> GNN -> state.h5 -> baselines -> report
+python scripts/run_all.py --heavy    # + NSE news backfill, LLM sentiment, PPO (workstation)
+```
+
+Individual stages, in order:
+
+| Stage | Command | Compute |
+|---|---|---|
+| 1. Data pipeline | `python scripts/run_phase1.py` | light (network) |
+| 2. GNN training | `python scripts/train_gnn.py` | light (CPU, ~1 min) |
+| 2.5 GNN score cache | `python scripts/cache_gnn_scores.py` | light |
+| 3a. News backfill | `python scripts/fetch_announcements.py` | network-heavy (NSE rate limits) |
+| 3b. LLM sentiment | `python scripts/run_sentiment.py` | **workstation** — `ollama pull llama3.2:3b-instruct-q4_K_M` first |
+| 4. State vector | `python scripts/build_state.py` | light |
+| 5/6. Baselines | `python -m src.rl_agent.baselines` | light |
+| 6a. PPO (×4 ablations) | `python scripts/train_ppo.py --ablation full\|no-gnn\|no-sentiment\|neither` | **workstation** — hours |
+| 6b. Evaluation | `python scripts/evaluate.py` | light |
+| 7. Report | `python scripts/report.py` | light |
+
+Without the LLM stage, `build_state.py` produces `state.h5` with a **neutral
+sentiment placeholder** (flagged in file attrs); `train_ppo.py` warns if the
+`full` / `no-gnn` arms are trained against it.

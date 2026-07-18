@@ -39,6 +39,30 @@ class GraphData:
         self._date_pos = {d: i for i, d in enumerate(self.dates)}
 
 
+def features_tensor(
+    features: pd.DataFrame, tickers: list[str]
+) -> tuple[list[pd.Timestamp], torch.Tensor]:
+    """Long-format features -> (dates, [T, N, F] tensor), ticker order enforced."""
+    dates = list(features.index.get_level_values("date").unique())
+    wide = features.unstack("ticker")  # columns: (feature, ticker)
+    blocks = [
+        torch.tensor(wide[name][tickers].to_numpy(), dtype=torch.float32)
+        for name in features.columns
+    ]
+    return dates, torch.stack(blocks, dim=-1)
+
+
+def supervision_pairs(cfg: Config) -> list[tuple[str, str]]:
+    """Directed (src, dst) ticker pairs the edge head scores, config-aware."""
+    from src.data_pipeline.relationships import build_graph
+
+    g = build_graph(cfg)
+    pairs = [(u, v) for u, v in g.edges()]
+    if cfg.gnn.bidirectional_supervision:
+        pairs += [(v, u) for u, v in g.edges()]
+    return pairs
+
+
 def build_dataset(cfg: Config | None = None) -> GraphData:
     cfg = cfg or load_config()
     features = load_features(cfg)
@@ -47,24 +71,14 @@ def build_dataset(cfg: Config | None = None) -> GraphData:
     g = build_graph(cfg)
     ei, ew = to_edge_index(g, tickers, symmetrize=True)
     pos = {t: i for i, t in enumerate(tickers)}
-    directed_edges = [(u, v) for u, v in g.edges()]
-    if cfg.gnn.bidirectional_supervision:
-        # demand shocks travel upstream: supervise reverse pairs too
-        directed_edges += [(v, u) for u, v in g.edges()]
+    directed_edges = supervision_pairs(cfg)
     directed_pairs = [(pos[u], pos[v]) for u, v in directed_edges]
 
     shocks = shock_matrix(features, cfg)
     samples = build_samples(shocks, directed_edges, cfg)
     train, val = temporal_split(samples, cfg)
 
-    dates = list(features.index.get_level_values("date").unique())
-    # [T, N, F] — unstack gives (date) x (feature, ticker); reorder explicitly
-    wide = features.unstack("ticker")  # columns: (feature, ticker)
-    t_tensors = []
-    for feat_name in features.columns:
-        block = wide[feat_name][tickers].to_numpy()  # [T, N]
-        t_tensors.append(torch.tensor(block, dtype=torch.float32))
-    x = torch.stack(t_tensors, dim=-1)  # [T, N, F]
+    dates, x = features_tensor(features, tickers)
 
     # Normalize with train-period statistics only (no val leakage)
     train_dates = {s.date for s in train}

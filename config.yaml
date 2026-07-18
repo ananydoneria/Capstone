@@ -105,6 +105,9 @@ env:
 rl:
   algo: PPO
   policy: MlpPolicy
+  # Train episodes are random 126-day windows inside the train split
+  # (regime diversity across the VecEnv); eval/test run the full split.
+  episode_length_days: 126
   total_timesteps: 2000000
   n_envs: 8
   n_steps: 2048

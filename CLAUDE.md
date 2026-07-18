@@ -82,22 +82,54 @@ this 15-node GNN; do NOT bother with CUDA wheels for it.
       GraphSAGE model, temporal train w/ early stopping, weights saved;
       overfitting fixed (3.3x samples), sweep-selected config, baseline
       comparison (2.6) done
-- [ ] Phase 2 remainder — full-timeline inference cache (2.5)
-- [ ] Phase 3 — LLM: NSE/BSE announcements ingester, Ollama client (needs
-      `ollama pull llama3:8b-instruct-q4_K_M` on user's box), batch sentiment
-      cache, determinism check
-- [ ] Phase 4 — state_builder → state.h5 + integrity gate (NaN/lookahead audit)
-- [ ] Phase 5 — Gymnasium env: costs.py, portfolio.py, exchange_env.py,
-      env_checker + deterministic replay test
-- [ ] Phase 6 — PPO training + baselines (buy&hold, equal-weight, momentum)
-      + ablations (no-GNN / no-LLM / neither)
-- [ ] Phase 7 — results report, one-command repro script, finalize Sources.md
+- [x] Phase 2.5 — gnn_scores.parquet cached (1174 days × 64 pairs, ran clean)
+- [x] Phase 3 CODE — announcements_ingest (NSE cookie-handshake fetcher,
+      month-cached, resume-safe), prompts (few-shot, calibrated), ollama_client
+      (LangChain ChatOllama, injectable transport, None-on-any-failure),
+      batch_sentiment (per-ticker checkpointing). **NOT RUN** — workstation only.
+- [x] Phase 4 — state.h5 BUILT & verified (741 days; sentiment attr =
+      neutral_placeholder until Phase 3 runs; rebuild after via build_state.py)
+- [x] Phase 5 — env built & tested: costs.py (STT/txn/SEBI/stamp/GST/slippage,
+      round-trip ~30bps), portfolio.py (sells-before-buys, cash-clamped, never
+      negative), exchange_env.py (softmax weights incl. cash bucket, fill at
+      open t+1, differential Sharpe + DD penalty, random 126d train episodes,
+      ablation flags zero obs blocks at constant dims, bankruptcy at 10%).
+      SB3 check_env passes; deterministic replay bit-identical.
+- [x] Phase 6 CODE — train_ppo.py (4 ablation arms full/no-gnn/no-sentiment/
+      neither, VecNormalize saved, warns on placeholder sentiment), evaluate.py
+      (loads model+vecnorm, deterministic test replay, metrics+curve CSV).
+      **PPO NOT TRAINED** (user away from GPU box). Baselines RUN on test:
+      buy&hold -1.12%, equal-weight -1.51%, momentum +12.95% (Sharpe 1.02,
+      maxDD 19.5%) — momentum is the bar PPO must beat.
+- [x] Phase 7 CODE — run_all.py (cheap vs --heavy staging), report.py
+      (graceful REPORT.md + equity_curves.png; smoke-tested, REPORT.md exists).
+- [ ] WORKSTATION RUN (see runbook below)
+- [ ] Verify relationships.csv citations against primary filings (VERIFY tags)
+
+## Workstation runbook (next session, in order)
+
+1. `ollama pull llama3.2:3b-instruct-q4_K_M`
+2. `python scripts/fetch_announcements.py` — NSE endpoint is flaky/rate-limited;
+   resume-safe, re-run until no new month files appear. If NSE blocks entirely,
+   fall back plan: BSE announcements or proceed with neutral sentiment and
+   document the limitation.
+3. `python scripts/run_sentiment.py` (resume-safe per ticker; ~3B model, fast)
+4. `python scripts/build_state.py` → must print "source: llm_cache"
+5. `python scripts/train_ppo.py --ablation full`, then `no-gnn`,
+   `no-sentiment`, `neither` — or all heavy stages: `python scripts/run_all.py --heavy`
+   (MlpPolicy PPO is small; CPU-only works too, just slower)
+6. `python scripts/evaluate.py` then `python scripts/report.py`
+7. Tests anytime: `.venv/Scripts/python -m pytest tests/ -q` (31 tests)
 
 ## Gotchas
 
 - Windows venv: `.venv/Scripts/python` (not `bin/`). Old pip in venv lacks
   `--disable-pip-version-warning`.
 - yfinance tickers with `&` (M&M.NS) and `-` (BAJAJ-AUTO.NS): quote in shells.
-- torch must be installed with the cu121 index URL before torch-geometric
-  (see requirements.txt comment).
+- torch: plain CPU wheel is installed and sufficient (tiny GNN + MlpPolicy);
+  CUDA wheels are optional, only for faster PPO on the workstation.
+- Baselines bypass the softmax action head by design (direct target weights
+  through Portfolio.rebalance); PPO cannot express exact zero weights
+  (softmax dust ~0.005% per asset) — economically irrelevant, but don't
+  "fix" tests by expecting exact zeros.
 - Multi-line git commit messages on PowerShell: write to file, `git commit -F`.
