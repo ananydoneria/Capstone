@@ -1,0 +1,98 @@
+# =============================================================================
+# Capstone3 — Hybrid Neuro-Symbolic Trading System (NSE Auto & Auto Ancillaries)
+# SINGLE SOURCE OF TRUTH for every tunable in the project.
+# All modules load this via src/common/config.py — never hardcode values.
+# =============================================================================
+
+project:
+  name: capstone3-neuro-symbolic-trader
+  seed: 42                      # global seed: random, NumPy, PyTorch, Gymnasium, SB3
+
+data:
+  # 3-year historical window (user decision 2026-07-19)
+  start_date: "2023-07-01"
+  end_date: "2026-06-30"
+  calendar: NSE
+  raw_dir: data/raw
+  processed_dir: data/processed
+  cache_dir: data/cache
+  state_file: data/processed/state.h5
+  relationships_file: data/raw/relationships.csv
+
+universe:
+  # OEM hub nodes
+  oems:
+    - MARUTI.NS
+    - TATAMOTORS.NS
+    - M&M.NS
+    - BAJAJ-AUTO.NS
+    - HEROMOTOCO.NS
+    - TVSMOTOR.NS
+    - EICHERMOT.NS
+    - ASHOKLEY.NS
+  # Ancillary / supplier nodes
+  ancillaries:
+    - MOTHERSON.NS      # ex-MOTHERSUMI (renamed 2022)
+    - BOSCHLTD.NS       # Bosch India (BOSCHCHASS does not exist)
+    - BHARATFORG.NS
+    - SONACOMS.NS
+    - UNOMINDA.NS
+    - EXIDEIND.NS
+    - APOLLOTYRE.NS
+
+features:
+  return_windows: [1, 5, 21]        # daily, weekly, monthly log returns
+  volatility_window: 21
+  momentum_window: 63
+  volume_zscore_window: 21
+
+gnn:
+  arch: graphsage                   # graphsage | gat
+  hidden_dim: 64
+  num_layers: 2
+  dropout: 0.2
+  shock_return_threshold: 0.04      # |1-day return| defining a "shock" event
+  cascade_window_days: 5            # k-day window for A -> B propagation label
+  learning_rate: 0.001
+  epochs: 200
+  early_stopping_patience: 20
+  val_tail_fraction: 0.2            # temporal tail of the train period, never shuffled
+
+llm:
+  backend: ollama                   # ollama | vllm
+  model: llama3:8b-instruct-q4_K_M  # quantized, fits RTX 3090 with headroom
+  temperature: 0.0                  # deterministic semantic evaluation (hard requirement)
+  seed: 42
+  max_tokens: 256
+  neutral_sentiment: 0.0            # no news / parse failure => neutral, never crash
+
+env:
+  initial_cash_inr: 1000000
+  fill_policy: next_open            # decide at close(t), fill at open(t+1) — no lookahead
+  costs:                            # Indian delivery-trade cost model (rates in Sources.md)
+    stt_delivery: 0.001             # 0.1% each side
+    exchange_txn_nse: 0.0000297
+    sebi_turnover_fee: 0.000001
+    stamp_duty_buy: 0.00015         # buy side only
+    gst_on_charges: 0.18
+    slippage_bps: 5
+  reward:                           # user decision 2026-07-19
+    type: differential_sharpe_with_drawdown
+    sharpe_eta: 0.01                # decay rate for differential Sharpe moving moments
+    drawdown_cap: 0.15              # penalty kicks in beyond 15% drawdown
+    drawdown_penalty_coef: 0.1
+
+rl:
+  algo: PPO
+  policy: MlpPolicy
+  total_timesteps: 2000000
+  n_envs: 8
+  n_steps: 2048
+  batch_size: 256
+  gamma: 0.99
+  gae_lambda: 0.95
+  learning_rate: 0.0003
+  ent_coef: 0.01
+  # Walk-forward split: train/val inside this date, test strictly after it
+  train_end: "2025-12-31"
+  test_start: "2026-01-02"

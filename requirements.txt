@@ -1,0 +1,31 @@
+# Core numerics & data
+numpy>=1.26,<2.0
+pandas>=2.2,<3.0
+pyarrow>=16.0
+pyyaml>=6.0
+pydantic>=2.7,<3.0
+h5py>=3.11
+
+# Data ingestion (Layer 1)
+yfinance>=0.2.40
+jugaad-data>=0.25
+networkx>=3.3
+
+# GNN (Layer 2) — install torch first, matching local CUDA (RTX 3090):
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+torch>=2.3,<2.6
+torch-geometric>=2.5
+
+# Local LLM (Layer 3)
+langchain>=0.2
+langchain-community>=0.2
+ollama>=0.2
+
+# RL (Layer 4)
+gymnasium>=0.29,<1.0
+stable-baselines3>=2.3,<3.0
+tensorboard>=2.16
+
+# Tooling
+pytest>=8.2
+matplotlib>=3.9

@@ -1,0 +1,28 @@
+# Data artifacts (regenerable from pipeline; keep dirs via .gitkeep)
+data/raw/*
+data/processed/*
+data/cache/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/cache/.gitkeep
+# Curated edge list IS versioned (hand-built research artifact)
+!data/raw/relationships.csv
+
+# Model artifacts & logs
+src/models/gnn/weights/*
+!src/models/gnn/weights/.gitkeep
+src/rl_agent/logs/*
+!src/rl_agent/logs/.gitkeep
+*.h5
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# OS / editor
+.DS_Store
+Thumbs.db
