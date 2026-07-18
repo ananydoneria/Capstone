@@ -54,18 +54,24 @@ jugaad-data/torch(CPU)/torch-geometric — CPU torch is fully sufficient for
 this 15-node GNN; do NOT bother with CUDA wheels for it.
 
 - Phase 1 artifacts (git-ignored, rebuild with `scripts/run_phase1.py`, or
-  `--offline` to skip the download): ohlcv_panel.parquet (741 days × 15
-  tickers, 2 single-day gaps ffilled), features.parquet (678 days × 15 × 6
-  after 63-day warmup). Crossval vs NSE bhavcopy: exact match (0.0000%).
+  `--offline` to skip the download): ohlcv_panel.parquet (1237 days × 15
+  tickers — GNN-only extended history from gnn.train_start_date 2021-07-01;
+  RL window stays data.start_date 2023-07-01), features.parquet (1174 days
+  × 15 × 6). Crossval vs NSE bhavcopy: exact match (0.0000%).
 - relationships.csv: 32 directed edges, weakly connected, Bosch = top hub
   (degree 8). Citations are class-level, tagged VERIFY (see Sources.md).
-- Phase 2: GNN trained (`scripts/train_gnn.py`), weights + feature-norm stats
-  + train_meta.json in src/models/gnn/weights/ (git-ignored). 816 train / 272
-  val cascade samples (15.4% positive), **best val AUC 0.680 @ epoch 2**,
-  early stopping. Rerun with same seed reproduces 0.6799 exactly.
-  Known limitation: overfits fast (~800 samples); config tuning tried
-  (h16/h32) didn't beat h64+early-stop — see note in config.yaml. The real
-  test of GNN value is the Phase 6 RL ablation, not val AUC.
+- Phase 2 overfitting fix (user-requested): sample size 816→2715 via
+  (a) 5y GNN history (earliest possible: SONACOMS IPO 2021-06-14),
+  (b) volatility-scaled shocks |ret| > max(2.5σ_prev, 2%) instead of flat 4%,
+  (c) bidirectional supervision (64 pairs). 2150 train / 565 val (17.7% /
+  23.5% pos) over 302/77 shock days.
+- GNN final (`scripts/train_gnn.py`): **val AUC 0.6314 @ epoch 3**, chosen by
+  `scripts/sweep_gnn.py` (12-point grid; winner h64/d0.4/wd1e-3 seed-robust
+  0.616–0.631 across seeds 42/7/2026). Train/val gap collapsed: train peaks
+  0.73 (was 0.93). Baselines on identical val samples
+  (`scripts/baseline_auc.py`): train-corr 0.585, dst-vol 0.359 (anti-
+  predictive — z-scored shocks removed the vol prior). GNN beats structure-
+  free priors by ~4.7 AUC pts; the decisive test remains the Phase 6 ablation.
 
 ## Roadmap
 
@@ -73,9 +79,10 @@ this 15-node GNN; do NOT bother with CUDA wheels for it.
 - [x] Phase 1 — data pipeline: ingest, crossval, calendar alignment, features,
       relationships.csv + graph builder
 - [x] Phase 2 (through training) — PyG dataset, shock/cascade labels,
-      GraphSAGE model, temporal train w/ early stopping, weights saved
-- [ ] Phase 2 remainder — full-timeline inference cache (2.5) + AUC vs
-      naive correlation baseline (2.6)
+      GraphSAGE model, temporal train w/ early stopping, weights saved;
+      overfitting fixed (3.3x samples), sweep-selected config, baseline
+      comparison (2.6) done
+- [ ] Phase 2 remainder — full-timeline inference cache (2.5)
 - [ ] Phase 3 — LLM: NSE/BSE announcements ingester, Ollama client (needs
       `ollama pull llama3:8b-instruct-q4_K_M` on user's box), batch sentiment
       cache, determinism check

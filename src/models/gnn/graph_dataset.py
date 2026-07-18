@@ -48,6 +48,9 @@ def build_dataset(cfg: Config | None = None) -> GraphData:
     ei, ew = to_edge_index(g, tickers, symmetrize=True)
     pos = {t: i for i, t in enumerate(tickers)}
     directed_edges = [(u, v) for u, v in g.edges()]
+    if cfg.gnn.bidirectional_supervision:
+        # demand shocks travel upstream: supervise reverse pairs too
+        directed_edges += [(v, u) for u, v in g.edges()]
     directed_pairs = [(pos[u], pos[v]) for u, v in directed_edges]
 
     shocks = shock_matrix(features, cfg)

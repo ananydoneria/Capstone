@@ -62,7 +62,10 @@ class GnnCfg(BaseModel):
     num_layers: int
     dropout: float
     weight_decay: float
-    shock_return_threshold: float
+    train_start_date: str
+    shock_z: float
+    shock_min_move: float
+    bidirectional_supervision: bool
     cascade_window_days: int
     learning_rate: float
     epochs: int

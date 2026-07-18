@@ -19,6 +19,12 @@ from src.common.config import Config, load_config
 OHLCV_COLS = ["Open", "High", "Low", "Close", "Volume"]
 
 
+def effective_start(cfg: Config) -> str:
+    """Download start: the GNN trains on extended history (gnn.train_start_date);
+    the RL/backtest window (data.start_date) is a slice of it."""
+    return min(cfg.data.start_date, cfg.gnn.train_start_date)
+
+
 def _raw_path(cfg: Config, ticker: str) -> Path:
     safe = ticker.replace(".NS", "").replace("&", "_AND_").replace("-", "_")
     return Path(cfg.data.raw_dir) / "ohlcv" / f"{safe}.parquet"
@@ -32,7 +38,7 @@ def download_ticker(cfg: Config, ticker: str, max_retries: int = 3) -> pd.DataFr
     for attempt in range(max_retries):
         try:
             df = yf.Ticker(ticker).history(
-                start=cfg.data.start_date, end=end_exclusive, auto_adjust=True
+                start=effective_start(cfg), end=end_exclusive, auto_adjust=True
             )
             if not df.empty:
                 df.index = df.index.tz_localize(None).normalize()

@@ -1,6 +1,9 @@
 """Shock events and cascade labels for GNN supervision.
 
-A *shock* at node A on day t: |1-day log return| > threshold.
+A *shock* at node A on day t: |1-day log return| exceeds
+max(shock_z * previous-day 21d rolling vol, shock_min_move) — volatility-
+scaled so every ticker contributes events at a comparable rate, floored so
+calm regimes don't flag economically meaningless moves.
 A training sample is a (day t, directed edge A->B) pair where A shocked at t;
 its binary label: did B shock on any day in (t, t+k]?
 
@@ -20,10 +23,14 @@ from src.common.config import Config, load_config
 
 
 def shock_matrix(features: pd.DataFrame, cfg: Config | None = None) -> pd.DataFrame:
-    """Boolean (dates x tickers) matrix of shock days from the logret_1 feature."""
+    """Boolean (dates x tickers) matrix of shock days."""
     cfg = cfg or load_config()
     ret1 = features["logret_1"].unstack("ticker")
-    return ret1.abs() > cfg.gnn.shock_return_threshold
+    vol_col = f"vol_{cfg.features.volatility_window}"
+    # previous-day vol: the shock's own return must not inflate its threshold
+    sigma_prev = features[vol_col].unstack("ticker").shift(1)
+    threshold = (cfg.gnn.shock_z * sigma_prev).clip(lower=cfg.gnn.shock_min_move)
+    return ret1.abs() > threshold  # NaN sigma on day 0 -> NaN threshold -> False
 
 
 @dataclass(frozen=True)

@@ -51,15 +51,25 @@ features:
 
 gnn:
   arch: graphsage                   # graphsage | gat
-  # Config selection note (2026-07-19): h64/d0.2/wd0 -> val AUC .680,
-  # h16/d0.3/wd1e-3 -> .629, h32/d0.3/wd5e-4 -> .671. Differences within
-  # noise on 272 val samples; kept the best. Early stopping does the real
-  # regularization work here (best epoch ~2 in every run).
+  # Selected by scripts/sweep_gnn.py (2026-07-19) on the 5y/z-score/
+  # bidirectional dataset (2150 train / 565 val): h64/d0.4/wd1e-3 -> 0.6314,
+  # seed-robust (0.616-0.631 across seeds 42/7/2026). All 12 grid points
+  # land in 0.596-0.631; early stopping remains the primary regularizer.
   hidden_dim: 64
   num_layers: 2
-  dropout: 0.2
-  weight_decay: 0.0
-  shock_return_threshold: 0.04      # |1-day return| defining a "shock" event
+  dropout: 0.4
+  weight_decay: 0.001
+  # GNN-only extended history (RL/backtest window stays data.start_date).
+  # Earliest possible: SONACOMS listed 2021-06-14.
+  train_start_date: "2021-07-01"
+  # Shock = |1-day logret| > max(shock_z * prev-day 21d vol, shock_min_move).
+  # Volatility-scaled so low-vol names (Maruti) and high-vol names (TMPV)
+  # contribute events at comparable rates; the floor stops calm-period noise.
+  shock_z: 2.5
+  shock_min_move: 0.02
+  # Supervise both edge directions (supply shocks travel downstream,
+  # demand shocks upstream): doubles pairs 32 -> 64.
+  bidirectional_supervision: true
   cascade_window_days: 5            # k-day window for A -> B propagation label
   learning_rate: 0.001
   epochs: 200

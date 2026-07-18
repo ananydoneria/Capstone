@@ -121,7 +121,10 @@ def train(cfg: Config | None = None) -> dict:
         "n_train": n_tr,
         "n_val": len(data.val),
         "train_pos_rate": round(n_pos / n_tr, 4),
-        "shock_threshold": cfg.gnn.shock_return_threshold,
+        "train_start_date": cfg.gnn.train_start_date,
+        "shock_z": cfg.gnn.shock_z,
+        "shock_min_move": cfg.gnn.shock_min_move,
+        "bidirectional_supervision": cfg.gnn.bidirectional_supervision,
         "cascade_window_days": cfg.gnn.cascade_window_days,
     }
     (WEIGHTS_DIR / "train_meta.json").write_text(json.dumps(meta, indent=2))

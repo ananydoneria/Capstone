@@ -28,7 +28,7 @@ def main() -> None:
     else:
         frames = ingest.download_universe(cfg)
         print(f"[1/4] Downloaded {len(frames)} tickers "
-              f"({cfg.data.start_date} .. {cfg.data.end_date})")
+              f"({ingest.effective_start(cfg)} .. {cfg.data.end_date})")
 
     panel = ingest.build_panel(frames, cfg)
     path = ingest.save_panel(panel, cfg)

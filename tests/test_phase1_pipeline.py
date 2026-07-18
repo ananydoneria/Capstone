@@ -27,7 +27,7 @@ def test_panel_integrity():
     assert not panel[["Open", "High", "Low", "Close"]].isna().any().any()
     assert panel.index.get_level_values("ticker").nunique() == 15
     dates = panel.index.get_level_values("date")
-    assert dates.min() >= pd.Timestamp(cfg.data.start_date)
+    assert dates.min() >= pd.Timestamp(ingest.effective_start(cfg))
     assert dates.max() <= pd.Timestamp(cfg.data.end_date)
 
 
