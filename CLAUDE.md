@@ -41,23 +41,41 @@ Hardware: local RTX 3090 (24GB). Separate from the Capstone2 CLOB simulator
   from 2026-01-02.
 - Reward: **Sharpe + drawdown penalty** (differential Sharpe, 15% DD cap).
 - News corpus: **NSE/BSE corporate announcements** (official filings).
+- LLM: **llama3.2:3b-instruct-q4_K_M** (user chose smaller/faster over 8B).
 - Universe: 15 tickers (8 OEMs + 7 ancillaries) in config.yaml. Ticker fixes
-  vs. the original brief: MOTHERSUMI→MOTHERSON.NS, BOSCHCHASS→BOSCHLTD.NS.
+  vs. the original brief: MOTHERSUMI→MOTHERSON.NS, BOSCHCHASS→BOSCHLTD.NS,
+  and **TATAMOTORS.NS→TMPV.NS** (Oct 2025 demerger; TMPV = renamed original
+  entity with full history; TMCV.NS spin-off lists only Dec 2025, excluded).
 
 ## Current state
 
-Phase 0 DONE (scaffold, config.yaml + pydantic loader, seeding, Sources.md,
-requirements.txt, .gitignore, tests/test_phase0.py — 4/4 passing in `.venv`
-with numpy/pyyaml/pydantic/pytest installed; heavy deps not yet installed).
+Phases 0–2 DONE (13/13 tests passing). `.venv` has pandas/yfinance/networkx/
+jugaad-data/torch(CPU)/torch-geometric — CPU torch is fully sufficient for
+this 15-node GNN; do NOT bother with CUDA wheels for it.
+
+- Phase 1 artifacts (git-ignored, rebuild with `scripts/run_phase1.py`, or
+  `--offline` to skip the download): ohlcv_panel.parquet (741 days × 15
+  tickers, 2 single-day gaps ffilled), features.parquet (678 days × 15 × 6
+  after 63-day warmup). Crossval vs NSE bhavcopy: exact match (0.0000%).
+- relationships.csv: 32 directed edges, weakly connected, Bosch = top hub
+  (degree 8). Citations are class-level, tagged VERIFY (see Sources.md).
+- Phase 2: GNN trained (`scripts/train_gnn.py`), weights + feature-norm stats
+  + train_meta.json in src/models/gnn/weights/ (git-ignored). 816 train / 272
+  val cascade samples (15.4% positive), **best val AUC 0.680 @ epoch 2**,
+  early stopping. Rerun with same seed reproduces 0.6799 exactly.
+  Known limitation: overfits fast (~800 samples); config tuning tried
+  (h16/h32) didn't beat h64+early-stop — see note in config.yaml. The real
+  test of GNN value is the Phase 6 RL ablation, not val AUC.
 
 ## Roadmap
 
 - [x] Phase 0 — scaffold & reproducibility backbone
-- [ ] Phase 1 — data pipeline: OHLCV ingest (yfinance, verify all 15 tickers
-      resolve), jugaad-data cross-val, NSE-calendar alignment, features,
-      relationships.csv + NetworkX graph builder
-- [ ] Phase 2 — GNN: PyG dataset, shock/cascade labels, GraphSAGE model,
-      temporal train, full-timeline inference cache, AUC vs correlation baseline
+- [x] Phase 1 — data pipeline: ingest, crossval, calendar alignment, features,
+      relationships.csv + graph builder
+- [x] Phase 2 (through training) — PyG dataset, shock/cascade labels,
+      GraphSAGE model, temporal train w/ early stopping, weights saved
+- [ ] Phase 2 remainder — full-timeline inference cache (2.5) + AUC vs
+      naive correlation baseline (2.6)
 - [ ] Phase 3 — LLM: NSE/BSE announcements ingester, Ollama client (needs
       `ollama pull llama3:8b-instruct-q4_K_M` on user's box), batch sentiment
       cache, determinism check

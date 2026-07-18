@@ -61,6 +61,7 @@ class GnnCfg(BaseModel):
     hidden_dim: int
     num_layers: int
     dropout: float
+    weight_decay: float
     shock_return_threshold: float
     cascade_window_days: int
     learning_rate: float

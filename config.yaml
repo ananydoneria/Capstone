@@ -23,7 +23,10 @@ universe:
   # OEM hub nodes
   oems:
     - MARUTI.NS
-    - TATAMOTORS.NS
+    # Tata Motors demerged Oct 2025: TATAMOTORS.NS retired. TMPV.NS (PV+JLR,
+    # the renamed original entity) keeps the full price history; TMCV.NS (CV
+    # spin-off) lists only from Dec 2025 and cannot cover a 3-year window.
+    - TMPV.NS
     - M&M.NS
     - BAJAJ-AUTO.NS
     - HEROMOTOCO.NS
@@ -48,9 +51,14 @@ features:
 
 gnn:
   arch: graphsage                   # graphsage | gat
+  # Config selection note (2026-07-19): h64/d0.2/wd0 -> val AUC .680,
+  # h16/d0.3/wd1e-3 -> .629, h32/d0.3/wd5e-4 -> .671. Differences within
+  # noise on 272 val samples; kept the best. Early stopping does the real
+  # regularization work here (best epoch ~2 in every run).
   hidden_dim: 64
   num_layers: 2
   dropout: 0.2
+  weight_decay: 0.0
   shock_return_threshold: 0.04      # |1-day return| defining a "shock" event
   cascade_window_days: 5            # k-day window for A -> B propagation label
   learning_rate: 0.001
@@ -60,7 +68,9 @@ gnn:
 
 llm:
   backend: ollama                   # ollama | vllm
-  model: llama3:8b-instruct-q4_K_M  # quantized, fits RTX 3090 with headroom
+  # 3B chosen over 8B (user decision 2026-07-19): ~4x faster batch pre-compute,
+  # ample for bounded sentiment normalization; still Llama-family instruct.
+  model: llama3.2:3b-instruct-q4_K_M
   temperature: 0.0                  # deterministic semantic evaluation (hard requirement)
   seed: 42
   max_tokens: 256

@@ -25,7 +25,7 @@
 | `networkx` | data_pipeline | Static supply-chain graph construction | BSD-3 |
 | `torch` | gnn / rl | Deep learning runtime (CUDA, RTX 3090) | BSD-style |
 | `torch-geometric` | gnn | GraphSAGE/GAT propagation-confidence model | MIT |
-| `ollama` + Llama-3-8B-Instruct (quantized) | llm | Local deterministic sentiment extraction | Ollama MIT; Meta Llama 3 Community License |
+| `ollama` + Llama-3.2-3B-Instruct (q4_K_M) | llm | Local deterministic sentiment extraction (3B over 8B for faster batch pre-compute) | Ollama MIT; Llama 3.2 Community License |
 | `langchain`, `langchain-community` | llm | LLM orchestration, structured output | MIT |
 | `pydantic` | common / llm | Config validation, LLM JSON schema enforcement | MIT |
 | `h5py` | data_pipeline / env | Pre-computed state-vector cache (`state.h5`) | BSD-3 |
@@ -49,8 +49,22 @@
 
 ## Relationship sources (graph edges)
 
-Populated in Phase 1.6 — one row per edge in `data/raw/relationships.csv`.
+The full edge list lives in [`data/raw/relationships.csv`](data/raw/relationships.csv)
+(32 directed supplier → buyer edges, one citation per row). Citations currently
+reference the *class* of primary document (FY24 annual-report customer/segment
+disclosures, DRHPs, investor presentations) and are tagged **VERIFY**: each must
+be checked against the actual filing and the tag removed before final academic
+submission.
 
-| Edge (supplier → buyer) | Relation | Citation |
-|---|---|---|
-| _(pending Phase 1.6)_ | | |
+## Data-integrity notes
+
+- **Cross-validation (2026-07-19)**: yfinance closes matched official NSE
+  bhavcopy (via `jugaad-data`) exactly — 21/21 overlapping days for MARUTI,
+  max divergence 0.0000%. Tooling: `src/data_pipeline/nse_crossval.py`
+  (tolerance 0.5%, since dividend auto-adjustment can shift closes slightly).
+- **Tata Motors demerger (Oct 2025)**: `TATAMOTORS.NS` is retired on Yahoo.
+  The universe uses `TMPV.NS` (Tata Motors Passenger Vehicles — the renamed
+  original listed entity, full price history 2023-07 → present). `TMCV.NS`
+  (CV spin-off) lists only from Dec 2025 and is excluded; note that
+  CV-related supplier edges (e.g. Bharat Forge) pointed at the unified
+  company for most of the window.

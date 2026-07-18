@@ -12,7 +12,7 @@ manager inside a cost-realistic simulated Indian exchange.
 |---|---|---|
 | Data & Exchange Sandbox | `src/data_pipeline/`, `src/env/` | OHLCV ingestion, supply-chain graph, Gymnasium exchange with Indian transaction costs |
 | Structural (GNN) | `src/models/gnn/` | PyTorch Geometric model → shock-propagation confidence scores |
-| Semantic (LLM) | `src/models/llm/` | Local quantized Llama-3-8B (Ollama, temp 0.0) → sentiment vectors in [-1, 1] |
+| Semantic (LLM) | `src/models/llm/` | Local quantized Llama-3.2-3B (Ollama, temp 0.0) → sentiment vectors in [-1, 1] |
 | Execution (RL) | `src/rl_agent/` | Stable-Baselines3 PPO on pre-computed state vectors; Sharpe + drawdown reward |
 
 Key design rule: **all GNN and LLM outputs are pre-computed for the full
