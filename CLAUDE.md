@@ -106,6 +106,27 @@ this 15-node GNN; do NOT bother with CUDA wheels for it.
 - [ ] WORKSTATION RUN (see runbook below)
 - [ ] Verify relationships.csv citations against primary filings (VERIFY tags)
 
+### Optional / post-capstone (user requested 2026-07-19 — "leave the door open")
+
+- [ ] **Phase 8a — daily paper-trading loop.** Evening script (post-close):
+      pull today's OHLCV bar + today's NSE announcements, compute the day's
+      feature row, one GNN forward, LLM-score the filings, feed the trained
+      PPO policy -> print target weights + the buy/sell order list for
+      tomorrow's open. NO real orders. Append to a forward-test ledger
+      (CSV: date, weights, hypothetical fills at next open, running P&L) so
+      live effectiveness can be tracked manually against the backtest claim.
+      Reuses every existing module; needs a small "incremental day" path in
+      the pipeline (currently full-history batch) + policy/vecnorm loading.
+      NOTE: the whole system is end-of-day by design — decisions at close t,
+      fills at open t+1. Nothing runs during market hours.
+- [ ] **Phase 8b — broker connectivity (Kotak Neo API), strictly optional.**
+      Adapter layer only AFTER 8a has a convincing forward-test ledger:
+      start with the Neo API's order-PLACEMENT sandbox/paper mode if
+      available; real order execution is the user's own decision and
+      responsibility, kept behind an explicit config flag defaulting off.
+      Design seam already exists: Portfolio.rebalance produces the target
+      trade list — a broker adapter would consume the same list.
+
 ## Workstation runbook (next session, in order)
 
 1. `ollama pull llama3.2:3b-instruct-q4_K_M`
