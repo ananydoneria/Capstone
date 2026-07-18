@@ -96,6 +96,18 @@ def fetch_all(cfg: Config | None = None) -> dict[str, int]:
     return stats
 
 
+def parse_announcement_date(stamp: str) -> pd.Timestamp:
+    """NSE timestamps look like '30-Jun-2026 18:29:34' (sometimes '30-06-2026...').
+    Returns normalized date, or NaT if unparseable. NEVER slice [:10] — the
+    '%d-%b-%Y' form is 11 chars and truncation corrupts the year."""
+    head = str(stamp).strip().split(" ")[0]
+    for fmt in ("%d-%b-%Y", "%d-%m-%Y", "%Y-%m-%d"):
+        date = pd.to_datetime(head, format=fmt, errors="coerce")
+        if pd.notna(date):
+            return date.normalize()
+    return pd.NaT
+
+
 def load_corpus(cfg: Config | None = None) -> pd.DataFrame:
     """Flatten cached JSON into rows (date, ticker, text).
 
@@ -119,9 +131,9 @@ def load_corpus(cfg: Config | None = None) -> pd.DataFrame:
                     if item.get(k) and str(item[k]).strip()
                 )
                 stamp = item.get("an_dt") or item.get("exchdisstime") or ""
-                date = pd.to_datetime(str(stamp)[:10], errors="coerce")
-                if text and date is not pd.NaT:
-                    rows.append({"date": date.normalize(), "ticker": ticker, "text": text})
+                date = parse_announcement_date(stamp)
+                if text and pd.notna(date):
+                    rows.append({"date": date, "ticker": ticker, "text": text})
     if not rows:
         return pd.DataFrame(columns=["date", "ticker", "text"])
     return pd.DataFrame(rows).sort_values(["date", "ticker"]).reset_index(drop=True)

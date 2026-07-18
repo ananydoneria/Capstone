@@ -55,3 +55,16 @@ def test_prompt_truncates_long_text():
 
 def test_determinism_config_enforced():
     assert cfg.llm.temperature == 0.0
+
+
+def test_nse_timestamp_parsing():
+    import pandas as pd
+
+    from src.models.llm.announcements_ingest import parse_announcement_date
+
+    # the real NSE format — 11-char date, must not lose the year
+    assert parse_announcement_date("30-Jun-2026 18:29:34") == pd.Timestamp("2026-06-30")
+    assert parse_announcement_date("05-Aug-2023 09:01:00") == pd.Timestamp("2023-08-05")
+    assert parse_announcement_date("30-06-2026 18:29:34") == pd.Timestamp("2026-06-30")
+    assert pd.isna(parse_announcement_date(""))
+    assert pd.isna(parse_announcement_date("not a date"))
