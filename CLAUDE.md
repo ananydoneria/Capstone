@@ -1,182 +1,174 @@
-# CLAUDE.md — Capstone3 Project State & Roadmap (Claude's working notes)
+# CLAUDE.md — Capstone3 (auto-loaded; FOLLOW THE RUNBOOK BELOW EXACTLY)
 
-> Auto-loaded each session. Update whenever state or plans change.
+Hybrid neuro-symbolic trading system, NSE Auto sector (academic capstone).
+GNN supply-chain scores + local-LLM filing sentiment feed a PPO portfolio
+manager inside a simulated Indian exchange. Everything is built and tested;
+**the only remaining work is RUNNING the steps below** (LLM sentiment + PPO
+training on the user's RTX 3090 PC), then evaluate + report.
 
-## What this project is
+ALWAYS use `.venv\Scripts\python` (never bare `python`). Run everything from
+the project root (this folder). This file is the source of truth; HOWTORUN.txt
+is the human-facing copy of the same runbook.
 
-Hybrid neuro-symbolic algorithmic trading system for the NSE/BSE Indian Auto &
-Auto Ancillaries sector. Four isolated layers (professional trading desk model):
+---------------------------------------------------------------------------
+## STEP 0 — orient (every new session, do this first)
 
-1. **Data & Exchange Sandbox** (`src/data_pipeline/`, `src/env/`) — yfinance
-   `.NS` OHLCV + curated supply-chain graph; custom Gymnasium env with Indian
-   transaction costs, daily stepping.
-2. **Structural** (`src/models/gnn/`) — PyG GNN over a NetworkX supply-chain
-   graph → Propagation Confidence Scores (shock A cascades to B within k days).
-3. **Semantic** (`src/models/llm/`) — local quantized Llama-3-8B-Instruct via
-   Ollama/LangChain, temperature 0.0 → sentiment vector in [-1, +1].
-4. **Execution** (`src/rl_agent/`) — SB3 PPO over a pre-computed state vector
-   (portfolio + GNN scores + sentiment). Reward: differential Sharpe + drawdown
-   penalty (cap 15%).
+Run: `.venv\Scripts\python -m pytest tests -q`
 
-Hardware: local RTX 3090 (24GB). Separate from the Capstone2 CLOB simulator
-(`C:\Users\shaha\Downloads\Capstone2`) — no shared code.
+| Result | Meaning | Action |
+|---|---|---|
+| `32 passed` | all artifacts present | go to STEP 1 |
+| venv missing / import errors | fresh machine | do SETUP below, retry |
+| some tests **skipped** | data/weights missing (git-ignored) | do REGENERATE below, retry |
+| failures | something broke | STOP; investigate, ask user before changing code |
 
-## Hard guardrails (do not regress)
+**SETUP** (once): `python -m venv .venv` then
+`.venv\Scripts\python -m pip install -r requirements.txt`
 
-1. **No LLM/GNN inference inside the RL loop.** Everything pre-computed into
-   `data/processed/state.h5`; the env only samples from it.
-2. **One seed in `config.yaml` (42)** → `src/common/seeding.py` covers
-   random/NumPy/PyTorch; Gymnasium seeded at `reset(seed=)`, SB3 at `PPO(seed=)`.
-   LLM temperature must be exactly 0.0 — config loader REJECTS anything else.
-3. **Strict modularity**: layers never import each other; they communicate only
-   through cached files. `src/common/` is the only shared import.
-4. **Data safety**: only yfinance, jugaad-data, official NSE/BSE/SEBI endpoints.
-   Every graph edge cites a source in Sources.md.
-5. **No lookahead**: features at day t use data ≤ t; decisions at close(t) fill
-   at open(t+1); GNN train/val split is temporal, never shuffled.
+**REGENERATE** (only if tests were skipped — cheap, ~3 min, needs internet):
+```
+.venv\Scripts\python scripts/run_phase1.py
+.venv\Scripts\python scripts/train_gnn.py
+.venv\Scripts\python scripts/cache_gnn_scores.py
+.venv\Scripts\python scripts/build_state.py
+```
 
-## User decisions (2026-07-19)
+Also check: does `src/rl_agent/logs/ppo_full/model.zip` exist?
+- YES → training already done. Do NOT retrain. Skip to STEP 6.
+- NO → continue with STEP 1.
 
-- Training window: **3 years** (2023-07-01 → 2026-06-30), walk-forward test
-  from 2026-01-02.
-- Reward: **Sharpe + drawdown penalty** (differential Sharpe, 15% DD cap).
-- News corpus: **NSE/BSE corporate announcements** (official filings).
-- LLM: **llama3.2:3b-instruct-q4_K_M** (user chose smaller/faster over 8B).
-- Universe: 15 tickers (8 OEMs + 7 ancillaries) in config.yaml. Ticker fixes
-  vs. the original brief: MOTHERSUMI→MOTHERSON.NS, BOSCHCHASS→BOSCHLTD.NS,
-  and **TATAMOTORS.NS→TMPV.NS** (Oct 2025 demerger; TMPV = renamed original
-  entity with full history; TMCV.NS spin-off lists only Dec 2025, excluded).
+---------------------------------------------------------------------------
+## STEP 1 — Ollama model (once per machine)
 
-## Current state
+Run: `ollama list` — if `llama3.2:3b-instruct-q4_K_M` is missing:
+`ollama pull llama3.2:3b-instruct-q4_K_M`
+If ollama is not installed, tell the user to install it from https://ollama.com
+(do not install it yourself), then continue from here.
 
-Phases 0–2 DONE (13/13 tests passing). `.venv` has pandas/yfinance/networkx/
-jugaad-data/torch(CPU)/torch-geometric — CPU torch is fully sufficient for
-this 15-node GNN; do NOT bother with CUDA wheels for it.
+## STEP 2 — NSE announcements corpus (network; ~20 min)
 
-- Phase 1 artifacts (git-ignored, rebuild with `scripts/run_phase1.py`, or
-  `--offline` to skip the download): ohlcv_panel.parquet (1237 days × 15
-  tickers — GNN-only extended history from gnn.train_start_date 2021-07-01;
-  RL window stays data.start_date 2023-07-01), features.parquet (1174 days
-  × 15 × 6). Crossval vs NSE bhavcopy: exact match (0.0000%).
-- relationships.csv: 32 directed edges, weakly connected, Bosch = top hub
-  (degree 8). Citations are class-level, tagged VERIFY (see Sources.md).
-- Phase 2 overfitting fix (user-requested): sample size 816→2715 via
-  (a) 5y GNN history (earliest possible: SONACOMS IPO 2021-06-14),
-  (b) volatility-scaled shocks |ret| > max(2.5σ_prev, 2%) instead of flat 4%,
-  (c) bidirectional supervision (64 pairs). 2150 train / 565 val (17.7% /
-  23.5% pos) over 302/77 shock days.
-- GNN final (`scripts/train_gnn.py`): **val AUC 0.6314 @ epoch 3**, chosen by
-  `scripts/sweep_gnn.py` (12-point grid; winner h64/d0.4/wd1e-3 seed-robust
-  0.616–0.631 across seeds 42/7/2026). Train/val gap collapsed: train peaks
-  0.73 (was 0.93). Baselines on identical val samples
-  (`scripts/baseline_auc.py`): train-corr 0.585, dst-vol 0.359 (anti-
-  predictive — z-scored shocks removed the vol prior). GNN beats structure-
-  free priors by ~4.7 AUC pts; the decisive test remains the Phase 6 ablation.
+Run: `.venv\Scripts\python scripts/fetch_announcements.py`
+- WARN lines = NSE throttling. Normal. The script is resume-safe:
+  re-run it until every ticker reports `0 new month files`.
+- If after several retries (wait 10+ min between) NOTHING ever downloads:
+  STOP and tell the user; options are curl_cffi impersonation or proceeding
+  with neutral sentiment. Do not improvise a new scraper.
 
-## Roadmap
+## STEP 3 — LLM sentiment (needs Ollama running; resume-safe per ticker)
 
-- [x] Phase 0 — scaffold & reproducibility backbone
-- [x] Phase 1 — data pipeline: ingest, crossval, calendar alignment, features,
-      relationships.csv + graph builder
-- [x] Phase 2 (through training) — PyG dataset, shock/cascade labels,
-      GraphSAGE model, temporal train w/ early stopping, weights saved;
-      overfitting fixed (3.3x samples), sweep-selected config, baseline
-      comparison (2.6) done
-- [x] Phase 2.5 — gnn_scores.parquet cached (1174 days × 64 pairs, ran clean)
-- [x] Phase 3 CODE — announcements_ingest (NSE cookie-handshake fetcher,
-      month-cached, resume-safe), prompts (few-shot, calibrated), ollama_client
-      (LangChain ChatOllama, injectable transport, None-on-any-failure),
-      batch_sentiment (per-ticker checkpointing). **NOT RUN** — workstation only.
-- [x] Phase 4 — state.h5 BUILT & verified (741 days; sentiment attr =
-      neutral_placeholder until Phase 3 runs; rebuild after via build_state.py)
-- [x] Phase 5 — env built & tested: costs.py (STT/txn/SEBI/stamp/GST/slippage,
-      round-trip ~30bps), portfolio.py (sells-before-buys, cash-clamped, never
-      negative), exchange_env.py (softmax weights incl. cash bucket, fill at
-      open t+1, differential Sharpe + DD penalty, random 126d train episodes,
-      ablation flags zero obs blocks at constant dims, bankruptcy at 10%).
-      SB3 check_env passes; deterministic replay bit-identical.
-- [x] Phase 6 CODE — train_ppo.py (4 ablation arms full/no-gnn/no-sentiment/
-      neither, VecNormalize saved, warns on placeholder sentiment), evaluate.py
-      (loads model+vecnorm, deterministic test replay, metrics+curve CSV).
-      **PPO NOT TRAINED** (user away from GPU box). Baselines RUN on test:
-      buy&hold -1.12%, equal-weight -1.51%, momentum +12.95% (Sharpe 1.02,
-      maxDD 19.5%) — momentum is the bar PPO must beat.
-- [x] Phase 7 CODE — run_all.py (cheap vs --heavy staging), report.py
-      (graceful REPORT.md + equity_curves.png; smoke-tested, REPORT.md exists).
-- [ ] WORKSTATION RUN (see runbook below)
-- [ ] Verify relationships.csv citations against primary filings (VERIFY tags)
+Run: `.venv\Scripts\python scripts/run_sentiment.py`
+- Instant connection error → Ollama isn't serving; start it or ask the user.
+- Item failures printing "-> neutral" are fine (by design, never crash).
 
-### Optional / post-capstone (user requested 2026-07-19 — "leave the door open")
+## STEP 4 — rebuild state with real sentiment  **GATE**
 
-- [x] **Phase 8a CODE — daily paper-trading loop** (src/rl_agent/paper_trade.py
-      + scripts/paper_trade.py): fills yesterday's pending at today's open,
-      fresh bars/filings -> GNN + LLM (graceful --no-llm) -> policy -> printed
-      order list + ledger.csv + paper_state.json. Loads VecNormalize stats via
-      pickle and normalizes obs manually (obs layout mirrors exchange_env._obs
-      — keep them in sync if obs ever changes!). Original design note:
-      pull today's OHLCV bar + today's NSE announcements, compute the day's
-      feature row, one GNN forward, LLM-score the filings, feed the trained
-      PPO policy -> print target weights + the buy/sell order list for
-      tomorrow's open. NO real orders. Append to a forward-test ledger
-      (CSV: date, weights, hypothetical fills at next open, running P&L) so
-      live effectiveness can be tracked manually against the backtest claim.
-      Reuses every existing module; needs a small "incremental day" path in
-      the pipeline (currently full-history batch) + policy/vecnorm loading.
-      NOTE: the whole system is end-of-day by design — decisions at close t,
-      fills at open t+1. Nothing runs during market hours.
-- [ ] **Phase 8b — broker connectivity (Kotak Neo API), strictly optional.**
-      Adapter layer only AFTER 8a has a convincing forward-test ledger:
-      start with the Neo API's order-PLACEMENT sandbox/paper mode if
-      available; real order execution is the user's own decision and
-      responsibility, kept behind an explicit config flag defaulting off.
-      Design seam already exists: Portfolio.rebalance produces the target
-      trade list — a broker adapter would consume the same list.
+Run: `.venv\Scripts\python scripts/build_state.py`
+- MUST print `source: llm_cache`.
+- If it prints `neutral_placeholder`: STEP 3 produced nothing. Go back.
+  Do NOT proceed to STEP 5 past this gate without telling the user.
 
-## FIRST ACTION on a new machine (fresh agent: start here)
+## STEP 5 — PPO training (the heavy part; 4 runs; hours total)
 
-You may be running on the user's GPU workstation (RTX 3090) — the user moved
-here specifically TO TRAIN. Orient in this order:
+Run these one at a time, in this order, waiting for each to finish:
+```
+.venv\Scripts\python scripts/train_ppo.py --ablation full
+.venv\Scripts\python scripts/train_ppo.py --ablation no-gnn
+.venv\Scripts\python scripts/train_ppo.py --ablation no-sentiment
+.venv\Scripts\python scripts/train_ppo.py --ablation neither
+```
+- Success per run = it prints `saved -> ...logs/ppo_<arm>` and model.zip
+  exists there.
+- 2,000,000 timesteps each (config.yaml `rl.total_timesteps`). Do NOT lower
+  it to "save time" — partial runs are worthless for the ablation claim.
+- If a run crashes: rerun that arm from scratch (it overwrites cleanly).
+- Progress: `tensorboard --logdir src/rl_agent/logs` (optional).
 
-1. `.venv` missing? `python -m venv .venv` then
-   `.venv/Scripts/python -m pip install -r requirements.txt`
-   (CPU torch fine; CUDA wheel optional for speed).
-2. `.venv/Scripts/python -m pytest tests -q` → **32 passed** = artifacts all
-   present, jump to the runbook below. Tests SKIPPED = data/weights missing
-   (they're git-ignored; folder-copy carries them, git clone doesn't):
-   regenerate with `run_phase1.py`, `train_gnn.py`, `cache_gnn_scores.py`,
-   `build_state.py` (all cheap), then re-run tests.
-3. Check `src/rl_agent/logs/ppo_*/model.zip`: if present, training already
-   happened — don't redo it, go to evaluate/report/paper-trade instead.
-4. Then execute the runbook below. HOWTORUN.txt is the user-facing mirror of
-   it. The user's decisions and all guardrails are earlier in this file —
-   respect them (esp.: LLM temp 0.0, no inference in RL loop, seed 42).
+## STEP 6 — evaluate + report (fast)
 
-## Workstation runbook (next session, in order)
+```
+.venv\Scripts\python scripts/evaluate.py
+.venv\Scripts\python scripts/report.py
+```
+Output: `REPORT.md` (metrics table: 4 PPO arms vs 3 baselines) and
+`equity_curves.png` (PPO solid, baselines dashed). Tell the user the headline:
+does `PPO full` beat `PPO neither` (the thesis) and beat momentum
+(+12.95%, Sharpe 1.02 — the bar)? Then commit: REPORT.md, equity_curves.png,
+and update the "Results so far" section of this file with the real numbers.
 
-1. `ollama pull llama3.2:3b-instruct-q4_K_M`
-2. `python scripts/fetch_announcements.py` — NSE endpoint is flaky/rate-limited;
-   resume-safe, re-run until no new month files appear. If NSE blocks entirely,
-   fall back plan: BSE announcements or proceed with neutral sentiment and
-   document the limitation.
-3. `python scripts/run_sentiment.py` (resume-safe per ticker; ~3B model, fast)
-4. `python scripts/build_state.py` → must print "source: llm_cache"
-5. `python scripts/train_ppo.py --ablation full`, then `no-gnn`,
-   `no-sentiment`, `neither` — or all heavy stages: `python scripts/run_all.py --heavy`
-   (MlpPolicy PPO is small; CPU-only works too, just slower)
-6. `python scripts/evaluate.py` then `python scripts/report.py`
-7. Tests anytime: `.venv/Scripts/python -m pytest tests/ -q` (32 tests)
-8. Optional after training: `python scripts/paper_trade.py` daily (Phase 8a,
-   built & smoke-tested; exits cleanly until a trained model exists)
+## STEP 7 — optional daily paper trading (only after STEP 5)
 
-## Gotchas
+`.venv\Scripts\python scripts/paper_trade.py` once per trading day, evening
+IST. Prints tomorrow's order list; NO real orders ever. Use `--no-llm` if
+Ollama is unavailable. Ledger: `src/rl_agent/logs/paper/ledger.csv`.
 
-- Windows venv: `.venv/Scripts/python` (not `bin/`). Old pip in venv lacks
-  `--disable-pip-version-warning`.
-- yfinance tickers with `&` (M&M.NS) and `-` (BAJAJ-AUTO.NS): quote in shells.
-- torch: plain CPU wheel is installed and sufficient (tiny GNN + MlpPolicy);
-  CUDA wheels are optional, only for faster PPO on the workstation.
-- Baselines bypass the softmax action head by design (direct target weights
-  through Portfolio.rebalance); PPO cannot express exact zero weights
-  (softmax dust ~0.005% per asset) — economically irrelevant, but don't
-  "fix" tests by expecting exact zeros.
-- Multi-line git commit messages on PowerShell: write to file, `git commit -F`.
+---------------------------------------------------------------------------
+## DO NOT (hard rules — no exceptions without explicit user approval)
+
+- Do NOT edit `config.yaml`, the model architectures, the reward function,
+  the universe/tickers, or the seed. Tuning is DONE; results must stay
+  reproducible.
+- Do NOT set LLM temperature to anything but 0.0 (the config loader rejects
+  other values — that is intentional, do not "fix" it).
+- Do NOT call the LLM or GNN inside the RL training loop. RL state comes
+  ONLY from `data/processed/state.h5`.
+- Do NOT retrain the GNN or PPO if their outputs already exist (GNN weights:
+  `src/models/gnn/weights/propagation_gnn.pt`; PPO: `logs/ppo_*/model.zip`).
+- Do NOT download datasets from anywhere except yfinance, jugaad-data, or
+  official NSE/BSE endpoints (already wired into the scripts).
+- Do NOT place, or wire up placing, real broker orders (Phase 8b is
+  design-only; the user's own decision, later, separately).
+- Do NOT lower total_timesteps, skip ablation arms, or estimate/fabricate
+  results. Report actual numbers or report the failure.
+- Do NOT commit `data/`, model weights, or `logs/` contents (gitignore
+  handles it; the STEP 6 report files are the exception).
+
+---------------------------------------------------------------------------
+## Project knowledge (context; the runbook above takes precedence)
+
+**Architecture — 4 isolated layers, communicating only via cached files:**
+`src/data_pipeline/` (yfinance OHLCV, features, supply-chain graph, state.h5
+builder) → `src/models/gnn/` (PyG GraphSAGE → shock-cascade propagation
+scores) + `src/models/llm/` (Ollama llama3.2:3b-instruct-q4_K_M, temp 0.0,
+NSE filings → sentiment in [-1,1]) → `src/env/` (Gymnasium exchange: Indian
+cost stack ~30bps round trip, decisions at close t fill at open t+1,
+differential Sharpe reward + 15% drawdown penalty) → `src/rl_agent/`
+(SB3 PPO, 4 ablation arms, baselines, evaluate, paper_trade).
+
+**User decisions (2026-07-19):** 3-year RL window 2023-07-01→2026-06-30 with
+test split from 2026-01-02; reward = Sharpe + drawdown penalty; corpus = NSE
+corporate announcements; LLM = 3B (speed chosen over 8B); 15 tickers fixed in
+config.yaml — note TATAMOTORS.NS→TMPV.NS (Oct-2025 demerger; TMCV.NS excluded,
+insufficient history), MOTHERSUMI→MOTHERSON.NS, BOSCHCHASS→BOSCHLTD.NS.
+
+**Results so far (all verified, all seeded with 42; 32/32 tests):**
+- Data: 1237 days × 15 tickers (GNN trains on extended 2021-07 history; the
+  RL window is the 3y slice). yfinance closes == official NSE bhavcopy
+  exactly (crossval divergence 0.0000%).
+- Graph: 32 directed supplier→buyer edges, Bosch top hub; citations tagged
+  VERIFY in Sources.md (manual verification still in backlog).
+- GNN: val AUC 0.6314 (sweep-selected h64/dropout0.4/wd1e-3; seed-robust
+  0.616–0.631; beats correlation baseline 0.585 and vol baseline 0.359).
+  Overfitting fixed via 2715 samples (5y history + z-scored shocks +
+  bidirectional pairs); train/val gap collapsed (train peaks 0.73, was 0.93).
+- state.h5: 741 RL days; sentiment currently `neutral_placeholder` (STEP 4
+  replaces it). Env: SB3 check_env passes; replay bit-identical under seed.
+- Baselines on the H1-2026 test window: buy&hold -1.12%, equal-weight
+  -1.51%, momentum +12.95% (Sharpe 1.02, maxDD 19.5%) ← the bar PPO must beat.
+- PPO: NOT trained yet — that is this session's job if model.zip is absent.
+
+**Gotchas:**
+- Windows: `.venv\Scripts\python`; multi-line git commit messages via a file
+  and `git commit -F <file>`.
+- CPU torch is sufficient everywhere (tiny GNN, small MlpPolicy); a CUDA
+  wheel is optional and only speeds up PPO.
+- paper_trade.py builds observations manually — its obs layout mirrors
+  `exchange_env._obs`; if either changes, change both.
+- PPO's softmax cannot emit exact-zero weights (~0.005% dust per asset) —
+  expected and economically irrelevant; don't "fix" tests to demand zeros.
+- Baselines intentionally bypass the softmax head (direct target weights
+  through Portfolio.rebalance).
+
+**Backlog (not this session):** verify relationships.csv citations against
+primary filings; Phase 8b Kotak Neo broker adapter (design-only, gated on a
+convincing paper-trade ledger + explicit user decision); optional Streamlit
+dashboard (user undecided).
