@@ -6,6 +6,9 @@ manager inside a simulated Indian exchange. Everything is built and tested;
 **the only remaining work is RUNNING the steps below** (LLM sentiment + PPO
 training on the user's RTX 3090 PC), then evaluate + report.
 
+**TO TRAIN THE MODEL: do STEPS 0→5 in order, then STEP 6 for results.**
+The exact commands are written out in each step — run those files, nothing else.
+
 ALWAYS use `.venv\Scripts\python` (never bare `python`). Run everything from
 the project root (this folder). This file is the source of truth; HOWTORUN.txt
 is the human-facing copy of the same runbook.
@@ -24,6 +27,10 @@ Run: `.venv\Scripts\python -m pytest tests -q`
 
 **SETUP** (once): `python -m venv .venv` then
 `.venv\Scripts\python -m pip install -r requirements.txt`
+NOTE: if this folder was COPIED from another PC, the bundled `.venv` is
+broken (venvs hard-code absolute paths). Any weird python/pip error →
+delete the `.venv` folder entirely and do SETUP fresh. Everything else
+(data/, weights, state.h5) copies fine and needs no regeneration.
 
 **REGENERATE** (only if tests were skipped — cheap, ~3 min, needs internet):
 ```

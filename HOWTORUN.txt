@@ -26,8 +26,10 @@ PPO on the RTX 3090 optionally install the CUDA wheel first:
 
 HOW DID THIS FOLDER GET HERE?
   a) Copied the whole folder (incl. data/ and src/models/gnn/weights/):
-     verify with   python -m pytest tests -q   -> "32 passed" means everything
-     transferred; skip to step 2.
+     FIRST delete the copied .venv folder and recreate it (venvs hard-code
+     absolute paths and break when moved between PCs; everything else copies
+     fine). Then verify with   python -m pytest tests -q   -> "32 passed"
+     means everything transferred; skip to step 2.
   b) Git clone / copied without data: data/ and GNN weights are git-ignored,
      regenerate them (needs internet, ~3 min):
          python scripts/run_phase1.py
