@@ -46,7 +46,9 @@ def main() -> None:
     model.load_state_dict(torch.load(WEIGHTS_DIR / "propagation_gnn.pt", weights_only=True))
     model.eval()
     with torch.no_grad():
-        gnn_logits, gnn_labels = _epoch_scores(model, data, _batch_by_day(data, data.val))
+        gnn_logits, gnn_labels = _epoch_scores(
+            model, data, _batch_by_day(data, data.val), cfg.gnn.temporal_window_days
+        )
 
     print(f"val samples: {len(data.val)}  (positives {labels.mean():.1%})")
     print(f"baseline  train-corr AUC : {auc_score(labels, corr_scores):.4f}")

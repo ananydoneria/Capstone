@@ -3,7 +3,7 @@
 Each run (once per trading day, after ~18:30 IST when EOD data settles):
   1. Executes YESTERDAY's pending recommendation at TODAY's open (the fill the
      agent was trained to expect), updating the hypothetical portfolio.
-  2. Fetches fresh bars (yfinance) + today's NSE filings, computes today's
+  2. Fetches fresh bars (nsepython) + today's NSE filings (NseKit), computes today's
      features, one GNN forward, LLM-scores the filings (neutral if Ollama is
      unreachable or --no-llm).
   3. Feeds the trained PPO policy today's state -> target weights for
@@ -29,16 +29,15 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
-import yfinance as yf
 
 from src.common.config import Config, load_config
 from src.common.seeding import set_global_seed
 from src.data_pipeline.features import build_features
-from src.data_pipeline.ohlcv_ingest import OHLCV_COLS, build_panel
+from src.data_pipeline.ohlcv_ingest import OHLCV_COLS, normalize_nse_history, build_panel
 from src.data_pipeline.relationships import build_graph, to_edge_index
 from src.env.exchange_env import ACTION_LOGIT_SCALE
 from src.env.portfolio import Portfolio
-from src.models.gnn.graph_dataset import features_tensor, supervision_pairs
+from src.models.gnn.graph_dataset import features_tensor, supervision_pairs, window_features
 from src.models.gnn.model import PropagationGNN
 from src.models.gnn.train import WEIGHTS_DIR
 from src.rl_agent.train_ppo import LOGS_DIR
@@ -49,15 +48,16 @@ LOOKBACK_DAYS = 400  # calendar days of bars: covers 63d warmup with margin
 
 # --------------------------------------------------------------- data (today)
 def fetch_recent_panel(cfg: Config) -> pd.DataFrame:
+    from nsepython import equity_history
+
     frames = {}
-    start = (pd.Timestamp.now() - pd.Timedelta(days=LOOKBACK_DAYS)).strftime("%Y-%m-%d")
+    start = (pd.Timestamp.now() - pd.Timedelta(days=LOOKBACK_DAYS)).strftime("%d-%m-%Y")
+    end = pd.Timestamp.now().strftime("%d-%m-%Y")
     for ticker in cfg.universe.tickers:
-        df = yf.Ticker(ticker).history(start=start, auto_adjust=True)
-        if df.empty:
+        raw = equity_history(ticker.replace(".NS", ""), "EQ", start, end)
+        if raw is None or raw.empty:
             raise RuntimeError(f"no recent data for {ticker}")
-        df.index = df.index.tz_localize(None).normalize()
-        df.index.name = "date"
-        frames[ticker] = df[OHLCV_COLS].copy()
+        frames[ticker] = normalize_nse_history(raw)[OHLCV_COLS]
     return build_panel(frames, cfg)
 
 
@@ -66,24 +66,22 @@ def todays_sentiment(cfg: Config, today: pd.Timestamp, no_llm: bool) -> np.ndarr
     if no_llm:
         return neutral
     try:
-        from src.models.llm.announcements_ingest import API, HEADERS, parse_announcement_date
-        from src.models.llm.ollama_client import SentimentClient
-        import requests
+        from NseKit import Nse
 
-        sess = requests.Session()
-        sess.headers.update(HEADERS)
+        from src.models.llm.ollama_client import SentimentClient
+
+        nse = Nse()
         client = SentimentClient(cfg)
         out = neutral.copy()
         for i, ticker in enumerate(cfg.universe.tickers):
-            resp = sess.get(API, params={
-                "index": "equities", "symbol": ticker.replace(".NS", ""),
-                "from_date": f"{today:%d-%m-%Y}", "to_date": f"{today:%d-%m-%Y}",
-            }, timeout=20)
-            items = resp.json() if resp.status_code == 200 else []
+            df = nse.cm_live_hist_corporate_announcement(
+                symbol=ticker.replace(".NS", ""),
+                from_date=f"{today:%d-%m-%Y}", to_date=f"{today:%d-%m-%Y}",
+            )
             scores = []
-            for item in items if isinstance(items, list) else []:
+            for item in (df.to_dict("records") if df is not None else []):
                 text = " | ".join(str(item.get(k, "")) for k in ("desc", "attchmntText") if item.get(k))
-                if text and parse_announcement_date(item.get("an_dt", "")) == today:
+                if text:
                     r = client.score(text)
                     if r is not None:
                         scores.append(r.sentiment)
@@ -99,7 +97,8 @@ def todays_gnn(cfg: Config, features: pd.DataFrame) -> np.ndarray:
     tickers = cfg.universe.tickers
     _, x = features_tensor(features, tickers)
     norm = torch.load(WEIGHTS_DIR / "feature_norm.pt", weights_only=True)
-    x = (x[-1] - norm["mean"]) / norm["std"]
+    x = (x - norm["mean"]) / norm["std"]
+    x_window = window_features(x, day_idx=x.shape[0] - 1, width=cfg.gnn.temporal_window_days)
     ei, _ = to_edge_index(build_graph(cfg), tickers, symmetrize=True)
     pos = {t: i for i, t in enumerate(tickers)}
     pairs = torch.tensor([[pos[u], pos[v]] for u, v in supervision_pairs(cfg)])
@@ -107,7 +106,7 @@ def todays_gnn(cfg: Config, features: pd.DataFrame) -> np.ndarray:
     model.load_state_dict(torch.load(WEIGHTS_DIR / "propagation_gnn.pt", weights_only=True))
     model.eval()
     with torch.no_grad():
-        return torch.sigmoid(model(x, torch.tensor(ei), pairs)).numpy().astype(np.float32)
+        return torch.sigmoid(model(x_window, torch.tensor(ei), pairs)).numpy().astype(np.float32)
 
 
 # ------------------------------------------------------------------- policy

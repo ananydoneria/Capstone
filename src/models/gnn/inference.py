@@ -21,7 +21,7 @@ from src.common.config import Config, load_config
 from src.common.seeding import set_global_seed
 from src.data_pipeline.features import load_features
 from src.data_pipeline.relationships import build_graph, to_edge_index
-from src.models.gnn.graph_dataset import features_tensor, supervision_pairs
+from src.models.gnn.graph_dataset import features_tensor, supervision_pairs, window_features
 from src.models.gnn.model import PropagationGNN
 from src.models.gnn.train import WEIGHTS_DIR
 
@@ -51,10 +51,12 @@ def run_inference(cfg: Config | None = None) -> pd.DataFrame:
     model.load_state_dict(torch.load(WEIGHTS_DIR / "propagation_gnn.pt", weights_only=True))
     model.eval()
 
+    window = cfg.gnn.temporal_window_days
     with torch.no_grad():
-        scores = torch.stack(
-            [torch.sigmoid(model(x[t], edge_index, pairs)) for t in range(len(dates))]
-        )
+        scores = torch.stack([
+            torch.sigmoid(model(window_features(x, t, window), edge_index, pairs))
+            for t in range(len(dates))
+        ])
 
     out = pd.DataFrame(
         scores.numpy(),

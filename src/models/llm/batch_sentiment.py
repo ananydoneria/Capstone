@@ -1,16 +1,17 @@
-"""Phase 3.4: batch sentiment pre-compute over the announcement corpus.
+"""Phase 3.4: batch sentiment pre-compute over the merged news corpus
+(NSE announcements + Finnhub + Moneycontrol, per ``news.sources``).
 
-For every (trading day, ticker): score each announcement, average the
-successful scores into one daily sentiment value in [-1, 1]. Announcements on
+For every (trading day, ticker): score each article/filing, average the
+successful scores into one daily sentiment value in [-1, 1]. Items on
 non-trading days roll forward to the next trading day. Cache is written to
 ``data/processed/sentiment.parquet`` incrementally per ticker — resume-safe:
 already-cached tickers are skipped on re-run.
 
-Days with no announcements are ABSENT from the cache; the Phase 4 state
+Days with no corpus text are ABSENT from the cache; the Phase 4 state
 builder fills them with cfg.llm.neutral_sentiment (0.0).
 
 GPU-box only (needs Ollama serving the configured model):
-    ollama pull llama3.2:3b-instruct-q4_K_M
+    ollama pull llama3:8b-instruct-q4_K_M
     python scripts/run_sentiment.py
 """
 
@@ -22,7 +23,7 @@ import pandas as pd
 
 from src.common.config import Config, load_config
 from src.data_pipeline.features import load_features
-from src.models.llm.announcements_ingest import load_corpus
+from src.models.llm.news_corpus import load_combined_corpus
 from src.models.llm.ollama_client import SentimentClient
 
 
@@ -46,9 +47,10 @@ def run_batch(cfg: Config | None = None, client: SentimentClient | None = None) 
     calendar = pd.DatetimeIndex(
         load_features(cfg).index.get_level_values("date").unique()
     ).sort_values()
-    corpus = _align_to_trading_days(load_corpus(cfg), calendar)
+    corpus = _align_to_trading_days(load_combined_corpus(cfg), calendar)
     if corpus.empty:
-        print("corpus is empty — run scripts/fetch_announcements.py first")
+        print("corpus is empty — run scripts/fetch_announcements.py "
+              "(+ fetch_finnhub_news.py / fetch_moneycontrol_news.py) first")
         return pd.DataFrame(columns=["date", "ticker", "sentiment", "n_items", "n_failed"])
 
     path = sentiment_path(cfg)

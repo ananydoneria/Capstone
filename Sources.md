@@ -9,9 +9,10 @@
 
 | Source | Purpose | Access | License / Terms |
 |---|---|---|---|
-| Yahoo Finance via `yfinance` | Daily OHLCV bars for `.NS` tickers (auto-adjusted) | Python API | Apache-2.0 (library); Yahoo ToS for data — research/personal use |
-| NSE bhavcopy via `jugaad-data` | Cross-validation of yfinance closes; official EOD prices | Python API | MIT (library); NSE data terms — personal/research use |
-| NSE corporate announcements (nseindia.com) | Historical per-ticker filings text for LLM sentiment layer | Official NSE endpoint | NSE website terms — research use, rate-limited polite scraping |
+| NSE historical/live equity data via `nsepython` | Daily OHLCV bars for `.NS` tickers | Python wrapper over official NSE endpoints | MIT (library); NSE data terms — personal/research use |
+| NSE historical/live equity + corporate announcements via `NseKit` | Cross-check OHLCV; corporate filings text for LLM sentiment layer | Python wrapper over official NSE endpoints | MIT (library); NSE data terms — personal/research use |
+| Finnhub company-news API | Supplementary financial news text for LLM sentiment layer | Official REST API, requires `FINNHUB_API_KEY` | Finnhub ToS — free tier, research/personal use |
+| Moneycontrol stock news pages | Supplementary financial news text for LLM sentiment layer | Polite rate-limited scraping (own `Moneycontrol_ingest.py`) | Moneycontrol website terms — research use only, low request rate |
 | BSE corporate announcements (bseindia.com) | Supplementary filings coverage | Official BSE endpoint | BSE website terms — research use |
 | SEBI filings / company annual reports | Supply-chain & related-party relationships for graph edges | Public disclosures | Public regulatory documents |
 
@@ -20,12 +21,12 @@
 | Library | Layer | Purpose | License |
 |---|---|---|---|
 | `numpy`, `pandas`, `pyarrow` | all | Numerics, tabular data, Parquet IO | BSD-3 / Apache-2.0 |
-| `yfinance` | data_pipeline | OHLCV ingestion | Apache-2.0 |
-| `jugaad-data` | data_pipeline | NSE bhavcopy cross-validation | MIT |
+| `nsepython` | data_pipeline | OHLCV ingestion (official NSE historical API) | MIT |
+| `nsekit` | data_pipeline / llm | OHLCV cross-check + corporate announcements (official NSE APIs) | MIT |
 | `networkx` | data_pipeline | Static supply-chain graph construction | BSD-3 |
 | `torch` | gnn / rl | Deep learning runtime (CUDA, RTX 3090) | BSD-style |
-| `torch-geometric` | gnn | GraphSAGE/GAT propagation-confidence model | MIT |
-| `ollama` + Llama-3.2-3B-Instruct (q4_K_M) | llm | Local deterministic sentiment extraction (3B over 8B for faster batch pre-compute) | Ollama MIT; Llama 3.2 Community License |
+| `torch-geometric` | gnn | GraphSAGE/GAT node encoder + temporal GRU propagation-confidence model | MIT |
+| `ollama` + Llama-3-8B-Instruct (q4_K_M) | llm | Local deterministic sentiment extraction | Ollama MIT; Llama 3 Community License |
 | `langchain`, `langchain-community` | llm | LLM orchestration, structured output | MIT |
 | `pydantic` | common / llm | Config validation, LLM JSON schema enforcement | MIT |
 | `h5py` | data_pipeline / env | Pre-computed state-vector cache (`state.h5`) | BSD-3 |
@@ -58,13 +59,20 @@ submission.
 
 ## Data-integrity notes
 
-- **Cross-validation (2026-07-19)**: yfinance closes matched official NSE
-  bhavcopy (via `jugaad-data`) exactly — 21/21 overlapping days for MARUTI,
-  max divergence 0.0000%. Tooling: `src/data_pipeline/nse_crossval.py`
-  (tolerance 0.5%, since dividend auto-adjustment can shift closes slightly).
-- **Tata Motors demerger (Oct 2025)**: `TATAMOTORS.NS` is retired on Yahoo.
-  The universe uses `TMPV.NS` (Tata Motors Passenger Vehicles — the renamed
+- **Cross-validation**: `nsepython`'s historical-API closes are cross-checked
+  against `NseKit`'s independent security-wise-data endpoint (both official
+  NSE, different code paths — catches parsing/column-mapping bugs even
+  though the ultimate source is shared). Tooling:
+  `src/data_pipeline/nse_crossval.py` (tolerance 0.5%).
+- **Tata Motors demerger (Oct 2025)**: `TATAMOTORS.NS` is retired. The
+  universe uses `TMPV.NS` (Tata Motors Passenger Vehicles — the renamed
   original listed entity, full price history 2023-07 → present). `TMCV.NS`
   (CV spin-off) lists only from Dec 2025 and is excluded; note that
   CV-related supplier edges (e.g. Bharat Forge) pointed at the unified
   company for most of the window.
+- **Moneycontrol scraping**: `moneycontrol_ingest.py` is rate-limited
+  (`news.moneycontrol_request_gap_s`) and best-effort — like the NSE
+  announcements fetch, failures are recorded and skipped, never fatal.
+- **Finnhub coverage**: free-tier Finnhub's Indian-equity news coverage is
+  thin/inconsistent; `finnhub_ingest.py` treats empty results as normal, not
+  an error — the NSE announcements channel remains the primary text source.

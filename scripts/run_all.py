@@ -7,13 +7,15 @@ Stage order (each idempotent; heavy stages are skipped without --heavy):
   1. run_phase1.py           download + validate + features + graph
   2. train_gnn.py            GNN training (CPU, ~1 min)
   3. cache_gnn_scores.py     full-timeline GNN inference cache
-  4. fetch_announcements.py  [heavy: network-intensive NSE backfill]
-  5. run_sentiment.py        [heavy: needs Ollama serving the 3B model]
-  6. build_state.py          fuse everything -> state.h5
-  7. baselines               cost-realistic baseline replays
-  8. train_ppo.py x4 arms    [heavy: PPO, all ablations]
-  9. evaluate.py             out-of-sample metrics per arm
- 10. report.py               REPORT.md + equity_curves.png
+  4. fetch_announcements.py    [heavy: network-intensive NSE backfill]
+  5. fetch_finnhub_news.py     [heavy: needs FINNHUB_API_KEY]
+  6. fetch_moneycontrol_news.py [heavy: network-intensive scrape]
+  7. run_sentiment.py          [heavy: needs Ollama serving the 8B model]
+  8. build_state.py            fuse everything -> state.h5
+  9. baselines                 cost-realistic baseline replays
+ 10. train_ppo.py x4 arms      [heavy: PPO, all ablations]
+ 11. evaluate.py               out-of-sample metrics per arm
+ 12. report.py                 REPORT.md + equity_curves.png
 """
 
 from __future__ import annotations
@@ -32,6 +34,8 @@ CHEAP = [
 ]
 HEAVY_PRE = [
     ["scripts/fetch_announcements.py"],
+    ["scripts/fetch_finnhub_news.py"],
+    ["scripts/fetch_moneycontrol_news.py"],
     ["scripts/run_sentiment.py"],
 ]
 MID = [

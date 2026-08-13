@@ -18,7 +18,7 @@ Requires Python 3.11+ and (for sentiment) Ollama from https://ollama.com
     python -m venv .venv
     .venv\Scripts\activate                      (Windows)
     pip install -r requirements.txt
-    ollama pull llama3.2:3b-instruct-q4_K_M
+    ollama pull llama3:8b-instruct-q4_K_M
 
 CPU-only torch is fine (the GNN is tiny; PPO MlpPolicy is small). For faster
 PPO on the RTX 3090 optionally install the CUDA wheel first:
@@ -61,7 +61,7 @@ Or stage by stage (recommended first time, so failures are obvious):
 
   2.2  python scripts/run_sentiment.py
        Needs Ollama running (ollama serve starts automatically on Windows).
-       Scores every filing with the local 3B model. Resume-safe per ticker.
+       Scores every filing with the local 8B model. Resume-safe per ticker.
 
   2.3  python scripts/build_state.py
        MUST print "source: llm_cache". If it says "neutral_placeholder",
@@ -115,7 +115,7 @@ is deliberately NOT implemented - see CLAUDE.md Phase 8b before considering it.
   src/models/llm/announcements_ingest.py, or accept neutral sentiment and
   document the limitation.
 - run_sentiment errors instantly: Ollama not running or model not pulled
-  (ollama list should show llama3.2:3b-instruct-q4_K_M).
+  (ollama list should show llama3:8b-instruct-q4_K_M).
 - train_ppo warns "sentiment is a neutral placeholder": you skipped 2.2/2.3.
 - Anything else: open a Claude Code chat here; CLAUDE.md carries full context.
 ================================================================================

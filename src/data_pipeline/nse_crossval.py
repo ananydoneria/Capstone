@@ -1,36 +1,44 @@
-"""Cross-validate yfinance closes against official NSE bhavcopy (jugaad-data).
-
-Best-effort guard against silent yfinance data corruption. NSE date columns
-arrive as UTC-shifted timestamps (18:30 UTC == next-day midnight IST), hence
-the +5h30m correction before normalizing.
+"""Cross-validate nsepython's historical closes against NseKit's independent
+security-wise-data endpoint — both wrap official NSE APIs, but different
+code paths, so this still catches parsing/column-mapping bugs in either.
 
 Run:  python -m src.data_pipeline.nse_crossval  (network: nseindia.com)
 """
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import timedelta
 
 import pandas as pd
 
 from src.common.config import Config, load_config
 from src.data_pipeline.ohlcv_ingest import load_raw
 
-TOLERANCE_PCT = 0.5  # auto_adjust dividend adjustments can shift closes slightly
+TOLERANCE_PCT = 0.5  # small numeric noise between independently-parsed feeds
 
 
 def crossval_ticker(cfg: Config, ticker: str, days: int = 30) -> dict:
-    from jugaad_data.nse import stock_df  # deferred: needs network
+    from NseKit import Nse  # deferred: needs network
 
-    end = pd.Timestamp(cfg.data.end_date).date()
+    symbol = ticker.replace(".NS", "")
+    end = pd.Timestamp(cfg.data.end_date)
     start = end - timedelta(days=days)
-    nse = stock_df(symbol=ticker.replace(".NS", ""), from_date=start, to_date=end, series="EQ")
-    d = (pd.to_datetime(nse["DATE"]) + pd.Timedelta(hours=5, minutes=30)).dt.normalize()
-    nse_close = nse.assign(d=d).set_index("d")["CLOSE"].sort_index()
+    nse = Nse().cm_hist_security_wise_data(
+        symbol=symbol,
+        from_date=start.strftime("%d-%m-%Y"),
+        to_date=end.strftime("%d-%m-%Y"),
+    )
+    if nse is None or nse.empty:
+        raise RuntimeError(f"NseKit returned no security-wise data for {symbol}")
+    d = pd.to_datetime(nse["Date"], dayfirst=True).dt.normalize()
+    nse_close = pd.to_numeric(
+        nse["Close Price"].astype(str).str.replace(",", "", regex=False), errors="coerce"
+    )
+    nse_close = nse_close.set_axis(d).sort_index()
 
-    yf_close = load_raw(cfg)[ticker]["Close"]
-    both = pd.DataFrame({"nse": nse_close, "yf": yf_close}).dropna()
-    div = ((both["nse"] - both["yf"]).abs() / both["nse"] * 100)
+    ours_close = load_raw(cfg)[ticker]["Close"]
+    both = pd.DataFrame({"nse": nse_close, "ours": ours_close}).dropna()
+    div = ((both["nse"] - both["ours"]).abs() / both["nse"] * 100)
     return {"ticker": ticker, "days": len(both), "max_div_pct": float(div.max()) if len(both) else None}
 
 

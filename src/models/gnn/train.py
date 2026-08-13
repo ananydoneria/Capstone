@@ -48,10 +48,10 @@ def _batch_by_day(data: GraphData, samples) -> list[tuple[int, torch.Tensor, tor
     return out
 
 
-def _epoch_scores(model, data, batches) -> tuple[torch.Tensor, torch.Tensor]:
+def _epoch_scores(model, data, batches, window: int) -> tuple[torch.Tensor, torch.Tensor]:
     all_logits, all_labels = [], []
     for day, pairs, labels in batches:
-        logits = model(data.x[day], data.edge_index, pairs)
+        logits = model(data.window(day, window), data.edge_index, pairs)
         all_logits.append(logits)
         all_labels.append(labels)
     return torch.cat(all_logits), torch.cat(all_labels)
@@ -77,6 +77,7 @@ def train(cfg: Config | None = None) -> dict:
     pos_weight = torch.tensor([(n_tr - n_pos) / max(n_pos, 1)])
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
+    window = cfg.gnn.temporal_window_days
     best = {"val_auc": -1.0, "epoch": -1, "state": None}
     patience_left = cfg.gnn.early_stopping_patience
     for epoch in range(cfg.gnn.epochs):
@@ -84,15 +85,15 @@ def train(cfg: Config | None = None) -> dict:
         total = 0.0
         for day, pairs, labels in train_b:
             opt.zero_grad()
-            loss = loss_fn(model(data.x[day], data.edge_index, pairs), labels)
+            loss = loss_fn(model(data.window(day, window), data.edge_index, pairs), labels)
             loss.backward()
             opt.step()
             total += float(loss.detach()) * len(labels)
 
         model.eval()
         with torch.no_grad():
-            tr_logits, tr_labels = _epoch_scores(model, data, train_b)
-            va_logits, va_labels = _epoch_scores(model, data, val_b)
+            tr_logits, tr_labels = _epoch_scores(model, data, train_b, window)
+            va_logits, va_labels = _epoch_scores(model, data, val_b, window)
         tr_auc, va_auc = auc_score(tr_labels, tr_logits), auc_score(va_labels, va_logits)
 
         if va_auc > best["val_auc"]:

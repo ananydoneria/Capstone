@@ -33,6 +33,20 @@ class DataCfg(BaseModel):
     relationships_file: str
 
 
+class NewsCfg(BaseModel):
+    sources: list[str]
+    finnhub_api_key_env: str
+    moneycontrol_request_gap_s: float
+
+    @field_validator("sources")
+    @classmethod
+    def _known_sources(cls, v: list[str]) -> list[str]:
+        allowed = {"nse", "finnhub", "moneycontrol"}
+        if unknown := set(v) - allowed:
+            raise ValueError(f"news.sources contains unknown entries: {unknown}")
+        return v
+
+
 class UniverseCfg(BaseModel):
     oems: list[str]
     ancillaries: list[str]
@@ -67,6 +81,8 @@ class GnnCfg(BaseModel):
     shock_min_move: float
     bidirectional_supervision: bool
     cascade_window_days: int
+    temporal_window_days: int
+    temporal_hidden_dim: int
     learning_rate: float
     epochs: int
     early_stopping_patience: int
@@ -133,6 +149,7 @@ class RlCfg(BaseModel):
 class Config(BaseModel):
     project: ProjectCfg
     data: DataCfg
+    news: NewsCfg
     universe: UniverseCfg
     features: FeaturesCfg
     gnn: GnnCfg

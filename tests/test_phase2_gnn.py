@@ -62,14 +62,27 @@ def test_model_forward_shape_and_determinism():
     set_global_seed(cfg.project.seed)
     m2 = PropagationGNN(in_dim=6, cfg=cfg)
 
-    x = torch.randn(15, 6)
+    x_window = torch.randn(cfg.gnn.temporal_window_days, 15, 6)
     ei = torch.randint(0, 15, (2, 64))
     pairs = torch.tensor([[0, 1], [2, 3], [4, 5]])
     m1.eval(); m2.eval()
     with torch.no_grad():
-        out1, out2 = m1(x, ei, pairs), m2(x, ei, pairs)
+        out1, out2 = m1(x_window, ei, pairs), m2(x_window, ei, pairs)
     assert out1.shape == (3,)
     assert torch.equal(out1, out2), "identical seed must give identical weights"
+
+
+def test_window_pads_and_never_looks_ahead():
+    from src.models.gnn.graph_dataset import window_features
+
+    x = torch.arange(5 * 3 * 2, dtype=torch.float32).reshape(5, 3, 2)
+    w = window_features(x, day_idx=1, width=4)  # only days 0,1 exist -> 2 pad rows
+    assert w.shape == (4, 3, 2)
+    assert torch.equal(w[:2], torch.zeros(2, 3, 2))
+    assert torch.equal(w[2:], x[:2])
+    # never includes a day after day_idx
+    w_full = window_features(x, day_idx=4, width=3)
+    assert torch.equal(w_full, x[2:5])
 
 
 def test_saved_weights_load():

@@ -47,8 +47,8 @@ Also check: does `src/rl_agent/logs/ppo_full/model.zip` exist?
 ---------------------------------------------------------------------------
 ## STEP 1 — Ollama model (once per machine)
 
-Run: `ollama list` — if `llama3.2:3b-instruct-q4_K_M` is missing:
-`ollama pull llama3.2:3b-instruct-q4_K_M`
+Run: `ollama list` — if `llama3:8b-instruct-q4_K_M` is missing:
+`ollama pull llama3:8b-instruct-q4_K_M`
 If ollama is not installed, tell the user to install it from https://ollama.com
 (do not install it yourself), then continue from here.
 
@@ -120,8 +120,8 @@ Ollama is unavailable. Ledger: `src/rl_agent/logs/paper/ledger.csv`.
   ONLY from `data/processed/state.h5`.
 - Do NOT retrain the GNN or PPO if their outputs already exist (GNN weights:
   `src/models/gnn/weights/propagation_gnn.pt`; PPO: `logs/ppo_*/model.zip`).
-- Do NOT download datasets from anywhere except yfinance, jugaad-data, or
-  official NSE/BSE endpoints (already wired into the scripts).
+- Do NOT download datasets from anywhere except nsepython, NseKit, Finnhub,
+  Moneycontrol, or official NSE/BSE endpoints (already wired into the scripts).
 - Do NOT place, or wire up placing, real broker orders (Phase 8b is
   design-only; the user's own decision, later, separately).
 - Do NOT lower total_timesteps, skip ablation arms, or estimate/fabricate
@@ -133,24 +133,35 @@ Ollama is unavailable. Ledger: `src/rl_agent/logs/paper/ledger.csv`.
 ## Project knowledge (context; the runbook above takes precedence)
 
 **Architecture — 4 isolated layers, communicating only via cached files:**
-`src/data_pipeline/` (yfinance OHLCV, features, supply-chain graph, state.h5
-builder) → `src/models/gnn/` (PyG GraphSAGE → shock-cascade propagation
-scores) + `src/models/llm/` (Ollama llama3.2:3b-instruct-q4_K_M, temp 0.0,
-NSE filings → sentiment in [-1,1]) → `src/env/` (Gymnasium exchange: Indian
-cost stack ~30bps round trip, decisions at close t fill at open t+1,
-differential Sharpe reward + 15% drawdown penalty) → `src/rl_agent/`
-(SB3 PPO, 4 ablation arms, baselines, evaluate, paper_trade).
+`src/data_pipeline/` (nsepython/NseKit OHLCV, features, supply-chain graph,
+state.h5 builder) → `src/models/gnn/` (PyG GraphSAGE + GRU temporal rollup →
+shock-cascade propagation scores) + `src/models/llm/` (Ollama
+llama3:8b-instruct-q4_K_M, temp 0.0, NSE filings + Finnhub + Moneycontrol →
+sentiment in [-1,1]) → `src/env/` (Gymnasium exchange: Indian cost stack
+~30bps round trip, decisions at close t fill at open t+1, differential
+Sharpe reward + 15% drawdown penalty) → `src/rl_agent/` (SB3 PPO, 4 ablation
+arms, baselines, evaluate, paper_trade).
 
 **User decisions (2026-07-19):** 3-year RL window 2023-07-01→2026-06-30 with
 test split from 2026-01-02; reward = Sharpe + drawdown penalty; corpus = NSE
-corporate announcements; LLM = 3B (speed chosen over 8B); 15 tickers fixed in
+corporate announcements + Finnhub + Moneycontrol; LLM = 8B (matches approved
+topic deck, supersedes the earlier 3B-for-speed tradeoff); 15 tickers fixed in
 config.yaml — note TATAMOTORS.NS→TMPV.NS (Oct-2025 demerger; TMCV.NS excluded,
 insufficient history), MOTHERSUMI→MOTHERSON.NS, BOSCHCHASS→BOSCHLTD.NS.
 
-**Results so far (all verified, all seeded with 42; 32/32 tests):**
+**STALE as of `match-deck-tech-stack` branch:** ingestion source
+(nsepython/NseKit replacing yfinance/jugaad-data), LLM model (8B replacing
+3B), and GNN architecture (temporal GRU rollup replacing static per-day
+snapshot) all changed on this branch. Every number below was measured on the
+old pipeline and must be fully regenerated (STEPS 0→6) before being cited —
+do not report these as current results.
+
+**Results so far (pre-branch; all seeded with 42; 32/32 tests):**
 - Data: 1237 days × 15 tickers (GNN trains on extended 2021-07 history; the
-  RL window is the 3y slice). yfinance closes == official NSE bhavcopy
-  exactly (crossval divergence 0.0000%).
+  RL window is the 3y slice). nsepython closes cross-checked against
+  NseKit's independent security-wise-data endpoint (rerun
+  `src/data_pipeline/nse_crossval.py` after the ingestion swap — not yet
+  re-verified on this branch, see "Backlog" below).
 - Graph: 32 directed supplier→buyer edges, Bosch top hub; citations tagged
   VERIFY in Sources.md (manual verification still in backlog).
 - GNN: val AUC 0.6314 (sweep-selected h64/dropout0.4/wd1e-3; seed-robust

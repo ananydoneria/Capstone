@@ -1,9 +1,12 @@
-"""Layer 1 ingestion: daily OHLCV bars for the configured universe via yfinance.
+"""Layer 1 ingestion: daily OHLCV bars for the configured universe via the
+official NSE historical API, wrapped by ``nsepython`` (matches the topic
+deck's tech-stack slide).
 
 Writes one Parquet per ticker to ``data/raw/ohlcv/`` and a combined validated
 panel to ``data/processed/ohlcv_panel.parquet`` (long format, one row per
-(date, ticker), columns Open/High/Low/Close/Volume, prices auto-adjusted for
-splits and dividends).
+(date, ticker), columns Open/High/Low/Close/Volume). NSE closes are
+split-adjusted by the exchange itself; no dividend auto-adjustment is applied
+(unlike the former yfinance source) — a documented limitation for the report.
 """
 
 from __future__ import annotations
@@ -12,11 +15,22 @@ import time
 from pathlib import Path
 
 import pandas as pd
-import yfinance as yf
 
 from src.common.config import Config, load_config
 
 OHLCV_COLS = ["Open", "High", "Low", "Close", "Volume"]
+
+# The NSE historical-API JSON has used a few different field-naming schemes
+# across endpoint revisions; try each candidate in order and fail loudly if
+# none match (never silently fabricate a column).
+_COL_CANDIDATES = {
+    "date": ["CH_TIMESTAMP", "TIMESTAMP", "mTIMESTAMP", "Date"],
+    "Open": ["CH_OPENING_PRICE", "OPEN", "Open Price"],
+    "High": ["CH_TRADE_HIGH_PRICE", "HIGH", "High Price"],
+    "Low": ["CH_TRADE_LOW_PRICE", "LOW", "Low Price"],
+    "Close": ["CH_CLOSING_PRICE", "CLOSE", "Close Price"],
+    "Volume": ["CH_TOT_TRADED_QTY", "VOLUME", "Total Traded Quantity"],
+}
 
 
 def effective_start(cfg: Config) -> str:
@@ -30,21 +44,46 @@ def _raw_path(cfg: Config, ticker: str) -> Path:
     return Path(cfg.data.raw_dir) / "ohlcv" / f"{safe}.parquet"
 
 
+def _pick_col(df: pd.DataFrame, field: str) -> str:
+    for cand in _COL_CANDIDATES[field]:
+        if cand in df.columns:
+            return cand
+    raise ValueError(
+        f"nsepython response has no recognizable '{field}' column "
+        f"(looked for {_COL_CANDIDATES[field]}; got {list(df.columns)})"
+    )
+
+
+def normalize_nse_history(raw: pd.DataFrame) -> pd.DataFrame:
+    """Raw NSE historical-API JSON -> our canonical OHLCV_COLS DataFrame,
+    DatetimeIndex named 'date'."""
+    date_col = _pick_col(raw, "date")
+    out = pd.DataFrame(index=pd.to_datetime(raw[date_col], dayfirst=True).dt.normalize())
+    out.index.name = "date"
+    for field in OHLCV_COLS:
+        col = _pick_col(raw, field)
+        values = raw[col].astype(str).str.replace(",", "", regex=False)
+        out[field] = pd.to_numeric(values, errors="coerce")
+    return out.sort_index()
+
+
 def download_ticker(cfg: Config, ticker: str, max_retries: int = 3) -> pd.DataFrame:
-    """Fetch adjusted daily bars for one ticker over the configured window."""
-    # yfinance end is exclusive; push one day past the configured inclusive end
-    end_exclusive = (pd.Timestamp(cfg.data.end_date) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    """Fetch daily bars for one ticker over the configured window from the
+    official NSE historical API."""
+    from nsepython import equity_history
+
+    symbol = ticker.replace(".NS", "")
+    start = pd.Timestamp(effective_start(cfg)).strftime("%d-%m-%Y")
+    end = pd.Timestamp(cfg.data.end_date).strftime("%d-%m-%Y")
     last_err: Exception | None = None
     for attempt in range(max_retries):
         try:
-            df = yf.Ticker(ticker).history(
-                start=effective_start(cfg), end=end_exclusive, auto_adjust=True
-            )
-            if not df.empty:
-                df.index = df.index.tz_localize(None).normalize()
-                df.index.name = "date"
-                return df[OHLCV_COLS].copy()
-        except Exception as err:  # network hiccups: back off and retry
+            raw = equity_history(symbol, "EQ", start, end)
+            if raw is not None and not raw.empty:
+                df = normalize_nse_history(raw)
+                if not df.empty:
+                    return df
+        except Exception as err:  # network hiccups / NSE throttling: back off and retry
             last_err = err
         time.sleep(2**attempt)
     raise RuntimeError(f"No data for {ticker} after {max_retries} attempts: {last_err}")

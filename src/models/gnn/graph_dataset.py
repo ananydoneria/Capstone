@@ -35,6 +35,16 @@ class GraphData:
     def day_index(self, date: pd.Timestamp) -> int:
         return self._date_pos[date]
 
+    def window(self, day_idx: int, width: int) -> torch.Tensor:
+        """Trailing window of ``width`` days ending at (inclusive) day_idx,
+        oldest -> newest. Left-zero-padded near the start of the timeline —
+        every real day used is still <= day_idx, so no lookahead leaks in."""
+        lo = day_idx - width + 1
+        if lo >= 0:
+            return self.x[lo : day_idx + 1]
+        pad = torch.zeros((-lo, *self.x.shape[1:]), dtype=self.x.dtype)
+        return torch.cat([pad, self.x[: day_idx + 1]], dim=0)
+
     def __post_init__(self) -> None:
         self._date_pos = {d: i for i, d in enumerate(self.dates)}
 
@@ -50,6 +60,16 @@ def features_tensor(
         for name in features.columns
     ]
     return dates, torch.stack(blocks, dim=-1)
+
+
+def window_features(x: torch.Tensor, day_idx: int, width: int) -> torch.Tensor:
+    """Standalone version of ``GraphData.window`` for callers holding a bare
+    [T, N, F] tensor (e.g. inference/paper-trading) rather than a GraphData."""
+    lo = day_idx - width + 1
+    if lo >= 0:
+        return x[lo : day_idx + 1]
+    pad = torch.zeros((-lo, *x.shape[1:]), dtype=x.dtype)
+    return torch.cat([pad, x[: day_idx + 1]], dim=0)
 
 
 def supervision_pairs(cfg: Config) -> list[tuple[str, str]]:

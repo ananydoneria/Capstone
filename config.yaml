@@ -19,6 +19,16 @@ data:
   state_file: data/processed/state.h5
   relationships_file: data/raw/relationships.csv
 
+news:
+  # Sources feeding the semantic layer's text corpus (Sources.md has full
+  # citations/licensing). NSE corporate announcements is the primary,
+  # official channel; Finnhub + Moneycontrol supplement with broader market
+  # commentary. Any source that errors or has no key configured is skipped
+  # (never fatal — matches the neutral-sentiment-on-absence design).
+  sources: [nse, finnhub, moneycontrol]
+  finnhub_api_key_env: FINNHUB_API_KEY   # read from environment, never committed
+  moneycontrol_request_gap_s: 2.0        # polite scraping spacing
+
 universe:
   # OEM hub nodes
   oems:
@@ -71,6 +81,11 @@ gnn:
   # demand shocks upstream): doubles pairs 32 -> 64.
   bidirectional_supervision: true
   cascade_window_days: 5            # k-day window for A -> B propagation label
+  # Temporal encoder (matches deck's "Temporal GNN" framing): a GRU rolls up
+  # this many trailing daily GraphSAGE embeddings per node before the edge
+  # head scores a pair, instead of scoring a single day's snapshot in isolation.
+  temporal_window_days: 10
+  temporal_hidden_dim: 32
   learning_rate: 0.001
   epochs: 200
   early_stopping_patience: 20
@@ -78,9 +93,11 @@ gnn:
 
 llm:
   backend: ollama                   # ollama | vllm
-  # 3B chosen over 8B (user decision 2026-07-19): ~4x faster batch pre-compute,
-  # ample for bounded sentiment normalization; still Llama-family instruct.
-  model: llama3.2:3b-instruct-q4_K_M
+  # 8B chosen to match the approved topic deck's tech-stack slide (quantized
+  # Llama-3-8B for core semantic perception). Supersedes the earlier 3B
+  # speed tradeoff (user decision 2026-07-19) — kept for the record in
+  # CLAUDE.md, not reversed silently.
+  model: llama3:8b-instruct-q4_K_M
   temperature: 0.0                  # deterministic semantic evaluation (hard requirement)
   seed: 42
   max_tokens: 256
