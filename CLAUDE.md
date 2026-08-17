@@ -14,6 +14,32 @@ the project root (this folder). This file is the source of truth; HOWTORUN.txt
 is the human-facing copy of the same runbook.
 
 ---------------------------------------------------------------------------
+## HANDOFF: moving this folder to the training PC (stronger machine)
+
+This project was developed/data-prepped on a sandbox that is NOT the
+training machine. GNN training and the news corpus backfill are already
+done (see "Handoff progress" below) — do not redo them. On the new PC:
+
+1. **Copy the whole `Capstone` folder** as-is (not a fresh `git clone` —
+   `data/`, `src/models/gnn/weights/` are git-ignored and only exist on
+   disk; a bare clone loses the already-trained GNN + news corpus).
+2. **Delete the `.venv` folder** — it hard-codes absolute paths from this
+   machine and will break. Everything else in the copy is fine untouched.
+3. `python -m venv .venv` then
+   `.venv\Scripts\python -m pip install -r requirements.txt`
+4. `.venv\Scripts\python -m pytest tests -q` — expect `25 passed, 7 skipped`
+   (the 7 skips are correct at this point: they all need STEP 3 sentiment,
+   which needs Ollama). If you see fewer passes or any failures, something
+   didn't copy — STOP and investigate before continuing.
+5. Skip straight to **STEP 1** below (Ollama). STEP 0's REGENERATE and the
+   GNN sub-step are already done; do not rerun `run_phase1.py` /
+   `train_gnn.py` / `cache_gnn_scores.py` unless you deliberately want fresh
+   yfinance data (they're safe to rerun — idempotent — just unnecessary).
+6. Optional: set `FINNHUB_API_KEY` in the environment and rerun
+   `scripts/fetch_finnhub_news.py` before STEP 3 for a fuller news corpus
+   (current corpus is Google-News-only, 5,700 headlines).
+
+---------------------------------------------------------------------------
 ## STEP 0 — orient (every new session, do this first)
 
 Run: `.venv\Scripts\python -m pytest tests -q`
@@ -168,6 +194,30 @@ rollup replacing static per-day snapshot) all changed on this branch. Every
 number below was measured on the original pre-branch pipeline and must be
 fully regenerated (STEPS 0→6) before being cited — do not report these as
 current results.
+
+**Handoff progress (2026-08-17, done on a non-training sandbox — NOT the
+RTX 3090 workstation, no Ollama installed here):**
+- STEP 0 REGENERATE done: `ohlcv_panel.parquet` (yfinance, 1237 days × 15
+  tickers), `features.parquet` built.
+- STEP 0.5 (train_gnn.py + cache_gnn_scores.py) done: weights in
+  `src/models/gnn/weights/`, val AUC 0.610 (early stop epoch 5 — lower than
+  the pre-branch 0.6314 baseline, expected given the temporal-GRU
+  architecture change; not yet re-swept). GNN scores cached: 1174 days × 64
+  pairs (mean 0.556, std 0.186).
+- STEP 2 partial: `fetch_google_news.py` done — 5,700 headlines, 15 tickers,
+  2023-07-01→2026-06-30 cached under `data/raw/google_news/`.
+  `fetch_finnhub_news.py` ran but skipped (no `FINNHUB_API_KEY` set) —
+  corpus is Google-News-only until a key is provided.
+- Tests: 25 passed, 7 skipped (all 7 need `build_state.py`, which needs
+  Step 3 sentiment — none of that possible without Ollama).
+- **Not done, needs the real workstation:** STEP 1 (Ollama +
+  llama3:8b-instruct-q4_K_M), STEP 3 (run_sentiment.py), STEP 4 gate
+  (build_state.py), STEP 5 (PPO ×4 arms, hours). Copy this whole folder over
+  (data/ + weights/ carry the above for free — do NOT rerun REGENERATE
+  unless you want fresh yfinance data), delete `.venv`, redo SETUP, then
+  pick up at STEP 1.
+- Optional before STEP 1: set `FINNHUB_API_KEY` and rerun
+  `fetch_finnhub_news.py` for a fuller news corpus.
 
 **Results so far (pre-branch; all seeded with 42; 32/32 tests):**
 - Data: 1237 days × 15 tickers (GNN trains on extended 2021-07 history; the
