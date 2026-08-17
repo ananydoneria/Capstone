@@ -49,8 +49,8 @@ def run_batch(cfg: Config | None = None, client: SentimentClient | None = None) 
     ).sort_values()
     corpus = _align_to_trading_days(load_combined_corpus(cfg), calendar)
     if corpus.empty:
-        print("corpus is empty — run scripts/fetch_announcements.py "
-              "(+ fetch_finnhub_news.py / fetch_moneycontrol_news.py) first")
+        print("corpus is empty — run scripts/fetch_finnhub_news.py "
+              "and/or scripts/fetch_google_news.py first")
         return pd.DataFrame(columns=["date", "ticker", "sentiment", "n_items", "n_failed"])
 
     path = sentiment_path(cfg)

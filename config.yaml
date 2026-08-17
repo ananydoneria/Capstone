@@ -21,13 +21,17 @@ data:
 
 news:
   # Sources feeding the semantic layer's text corpus (Sources.md has full
-  # citations/licensing). NSE corporate announcements is the primary,
-  # official channel; Finnhub + Moneycontrol supplement with broader market
-  # commentary. Any source that errors or has no key configured is skipped
-  # (never fatal — matches the neutral-sentiment-on-absence design).
-  sources: [nse, finnhub, moneycontrol]
+  # citations/licensing). NSE-direct sourcing (nsepython/NseKit) was dropped
+  # — nseindia.com sits behind Akamai bot-mitigation that silently blocks
+  # non-residential/non-browser traffic (see ohlcv_ingest.py docstring).
+  # Finnhub is the primary structured source; Google News RSS supplements
+  # with broader headline coverage. Any source that errors or has no key
+  # configured is skipped (never fatal — neutral-sentiment-on-absence design).
+  # NOTE: this departs from the approved topic deck's NSE-sourcing slide —
+  # a deliberate, documented tradeoff (see CLAUDE.md), not an oversight.
+  sources: [finnhub, google_news]
   finnhub_api_key_env: FINNHUB_API_KEY   # read from environment, never committed
-  moneycontrol_request_gap_s: 2.0        # polite scraping spacing
+  google_news_gap_s: 1.0                 # polite spacing between RSS hits
 
 universe:
   # OEM hub nodes

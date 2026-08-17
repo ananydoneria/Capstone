@@ -1,12 +1,16 @@
-"""Layer 1 ingestion: daily OHLCV bars for the configured universe via the
-official NSE historical API, wrapped by ``nsepython`` (matches the topic
-deck's tech-stack slide).
+"""Layer 1 ingestion: daily OHLCV bars for the configured universe via
+``yfinance``. NSE-direct sourcing (nsepython/NseKit) was dropped — nseindia.com
+sits behind Akamai bot-mitigation that blocks non-residential traffic outright
+(silent TLS-handshake drop, not a clean 403), making it unreliable for
+unattended/CI runs. Yahoo Finance proxies its own infrastructure and is not
+subject to that block. This is a deliberate departure from the topic-approval
+deck's "NSEPython and NseKit" tech-stack slide — documented, not silent.
 
 Writes one Parquet per ticker to ``data/raw/ohlcv/`` and a combined validated
 panel to ``data/processed/ohlcv_panel.parquet`` (long format, one row per
-(date, ticker), columns Open/High/Low/Close/Volume). NSE closes are
-split-adjusted by the exchange itself; no dividend auto-adjustment is applied
-(unlike the former yfinance source) — a documented limitation for the report.
+(date, ticker), columns Open/High/Low/Close/Volume). yfinance auto-adjusts for
+splits and dividends by default; we request raw (unadjusted) OHLC so the
+Indian cost model in ``src/env`` isn't fed already-adjusted prices.
 """
 
 from __future__ import annotations
@@ -20,18 +24,6 @@ from src.common.config import Config, load_config
 
 OHLCV_COLS = ["Open", "High", "Low", "Close", "Volume"]
 
-# The NSE historical-API JSON has used a few different field-naming schemes
-# across endpoint revisions; try each candidate in order and fail loudly if
-# none match (never silently fabricate a column).
-_COL_CANDIDATES = {
-    "date": ["CH_TIMESTAMP", "TIMESTAMP", "mTIMESTAMP", "Date"],
-    "Open": ["CH_OPENING_PRICE", "OPEN", "Open Price"],
-    "High": ["CH_TRADE_HIGH_PRICE", "HIGH", "High Price"],
-    "Low": ["CH_TRADE_LOW_PRICE", "LOW", "Low Price"],
-    "Close": ["CH_CLOSING_PRICE", "CLOSE", "Close Price"],
-    "Volume": ["CH_TOT_TRADED_QTY", "VOLUME", "Total Traded Quantity"],
-}
-
 
 def effective_start(cfg: Config) -> str:
     """Download start: the GNN trains on extended history (gnn.train_start_date);
@@ -44,46 +36,31 @@ def _raw_path(cfg: Config, ticker: str) -> Path:
     return Path(cfg.data.raw_dir) / "ohlcv" / f"{safe}.parquet"
 
 
-def _pick_col(df: pd.DataFrame, field: str) -> str:
-    for cand in _COL_CANDIDATES[field]:
-        if cand in df.columns:
-            return cand
-    raise ValueError(
-        f"nsepython response has no recognizable '{field}' column "
-        f"(looked for {_COL_CANDIDATES[field]}; got {list(df.columns)})"
-    )
-
-
-def normalize_nse_history(raw: pd.DataFrame) -> pd.DataFrame:
-    """Raw NSE historical-API JSON -> our canonical OHLCV_COLS DataFrame,
-    DatetimeIndex named 'date'."""
-    date_col = _pick_col(raw, "date")
-    out = pd.DataFrame(index=pd.to_datetime(raw[date_col], dayfirst=True).dt.normalize())
+def normalize_yf_history(raw: pd.DataFrame) -> pd.DataFrame:
+    """Raw yfinance ``Ticker.history()`` frame -> canonical OHLCV_COLS
+    DataFrame, DatetimeIndex named 'date'."""
+    out = raw[OHLCV_COLS].copy()
+    out.index = pd.DatetimeIndex(raw.index).tz_localize(None).normalize()
     out.index.name = "date"
-    for field in OHLCV_COLS:
-        col = _pick_col(raw, field)
-        values = raw[col].astype(str).str.replace(",", "", regex=False)
-        out[field] = pd.to_numeric(values, errors="coerce")
     return out.sort_index()
 
 
 def download_ticker(cfg: Config, ticker: str, max_retries: int = 3) -> pd.DataFrame:
-    """Fetch daily bars for one ticker over the configured window from the
-    official NSE historical API."""
-    from nsepython import equity_history
+    """Fetch daily bars for one ticker over the configured window via yfinance."""
+    import yfinance as yf
 
-    symbol = ticker.replace(".NS", "")
-    start = pd.Timestamp(effective_start(cfg)).strftime("%d-%m-%Y")
-    end = pd.Timestamp(cfg.data.end_date).strftime("%d-%m-%Y")
+    start = pd.Timestamp(effective_start(cfg)).strftime("%Y-%m-%d")
+    # yfinance's `end` is exclusive — push one day past to include end_date.
+    end = (pd.Timestamp(cfg.data.end_date) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
     last_err: Exception | None = None
     for attempt in range(max_retries):
         try:
-            raw = equity_history(symbol, "EQ", start, end)
+            raw = yf.Ticker(ticker).history(start=start, end=end, auto_adjust=False, actions=False)
             if raw is not None and not raw.empty:
-                df = normalize_nse_history(raw)
+                df = normalize_yf_history(raw)
                 if not df.empty:
                     return df
-        except Exception as err:  # network hiccups / NSE throttling: back off and retry
+        except Exception as err:  # network hiccups / rate limiting: back off and retry
             last_err = err
         time.sleep(2**attempt)
     raise RuntimeError(f"No data for {ticker} after {max_retries} attempts: {last_err}")

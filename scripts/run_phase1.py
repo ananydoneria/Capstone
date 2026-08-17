@@ -1,7 +1,7 @@
 """Phase 1 entrypoint: download -> validate -> features -> graph. Idempotent.
 
 Usage:  python scripts/run_phase1.py [--offline]
-        --offline  skip the nsepython download, rebuild from data/raw parquets
+        --offline  skip the yfinance download, rebuild from data/raw parquets
 """
 
 from __future__ import annotations

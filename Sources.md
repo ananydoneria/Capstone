@@ -7,13 +7,18 @@
 
 ## Data sources
 
+**NSE-direct sourcing dropped (2026-08-17):** nseindia.com sits behind Akamai
+bot-mitigation that silently drops non-residential/non-browser connections
+post-TLS-handshake (not a clean 403) — unreliable for unattended runs. This
+departs from the approved topic-approval deck's "NSEPython and NseKit"
+tech-stack slide; a deliberate, documented tradeoff, not an oversight (see
+CLAUDE.md).
+
 | Source | Purpose | Access | License / Terms |
 |---|---|---|---|
-| NSE historical/live equity data via `nsepython` | Daily OHLCV bars for `.NS` tickers | Python wrapper over official NSE endpoints | MIT (library); NSE data terms — personal/research use |
-| NSE historical/live equity + corporate announcements via `NseKit` | Cross-check OHLCV; corporate filings text for LLM sentiment layer | Python wrapper over official NSE endpoints | MIT (library); NSE data terms — personal/research use |
-| Finnhub company-news API | Supplementary financial news text for LLM sentiment layer | Official REST API, requires `FINNHUB_API_KEY` | Finnhub ToS — free tier, research/personal use |
-| Moneycontrol stock news pages | Supplementary financial news text for LLM sentiment layer | Polite rate-limited scraping (own `Moneycontrol_ingest.py`) | Moneycontrol website terms — research use only, low request rate |
-| BSE corporate announcements (bseindia.com) | Supplementary filings coverage | Official BSE endpoint | BSE website terms — research use |
+| Yahoo Finance via `yfinance` | Daily OHLCV bars for `.NS` tickers | Python wrapper, proxies Yahoo's own infrastructure | Apache-2.0 (library); Yahoo ToS — personal/research use |
+| Finnhub company-news API | Primary financial news text for LLM sentiment layer | Official REST API, requires `FINNHUB_API_KEY` | Finnhub ToS — free tier, research/personal use |
+| Google News RSS (`news.google.com/rss/search`) | Supplementary headline text for LLM sentiment layer | Public RSS feed, free-text + date-range query, no key | Google News ToS — research use |
 | SEBI filings / company annual reports | Supply-chain & related-party relationships for graph edges | Public disclosures | Public regulatory documents |
 
 ## Libraries
@@ -21,8 +26,7 @@
 | Library | Layer | Purpose | License |
 |---|---|---|---|
 | `numpy`, `pandas`, `pyarrow` | all | Numerics, tabular data, Parquet IO | BSD-3 / Apache-2.0 |
-| `nsepython` | data_pipeline | OHLCV ingestion (official NSE historical API) | MIT |
-| `nsekit` | data_pipeline / llm | OHLCV cross-check + corporate announcements (official NSE APIs) | MIT |
+| `yfinance` | data_pipeline | OHLCV ingestion (Yahoo Finance) | Apache-2.0 |
 | `networkx` | data_pipeline | Static supply-chain graph construction | BSD-3 |
 | `torch` | gnn / rl | Deep learning runtime (CUDA, RTX 3090) | BSD-style |
 | `torch-geometric` | gnn | GraphSAGE/GAT node encoder + temporal GRU propagation-confidence model | MIT |
@@ -59,20 +63,20 @@ submission.
 
 ## Data-integrity notes
 
-- **Cross-validation**: `nsepython`'s historical-API closes are cross-checked
-  against `NseKit`'s independent security-wise-data endpoint (both official
-  NSE, different code paths — catches parsing/column-mapping bugs even
-  though the ultimate source is shared). Tooling:
-  `src/data_pipeline/nse_crossval.py` (tolerance 0.5%).
+- **Single-source OHLCV**: dropping NSE-direct sourcing means there is no
+  longer an independent second feed to cross-validate `yfinance` closes
+  against (the old `nse_crossval.py` cross-checked two NSE-official code
+  paths against each other; both are gone). Documented limitation, not
+  silently dropped.
 - **Tata Motors demerger (Oct 2025)**: `TATAMOTORS.NS` is retired. The
   universe uses `TMPV.NS` (Tata Motors Passenger Vehicles — the renamed
   original listed entity, full price history 2023-07 → present). `TMCV.NS`
   (CV spin-off) lists only from Dec 2025 and is excluded; note that
   CV-related supplier edges (e.g. Bharat Forge) pointed at the unified
   company for most of the window.
-- **Moneycontrol scraping**: `moneycontrol_ingest.py` is rate-limited
-  (`news.moneycontrol_request_gap_s`) and best-effort — like the NSE
-  announcements fetch, failures are recorded and skipped, never fatal.
+- **Google News RSS**: `google_news_ingest.py` is rate-limited
+  (`news.google_news_gap_s`) and best-effort — failures are recorded and
+  skipped, never fatal. Headline-only text (no article body).
 - **Finnhub coverage**: free-tier Finnhub's Indian-equity news coverage is
   thin/inconsistent; `finnhub_ingest.py` treats empty results as normal, not
-  an error — the NSE announcements channel remains the primary text source.
+  an error — Google News RSS supplements the gaps.

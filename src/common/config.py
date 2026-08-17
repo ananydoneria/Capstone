@@ -36,12 +36,12 @@ class DataCfg(BaseModel):
 class NewsCfg(BaseModel):
     sources: list[str]
     finnhub_api_key_env: str
-    moneycontrol_request_gap_s: float
+    google_news_gap_s: float
 
     @field_validator("sources")
     @classmethod
     def _known_sources(cls, v: list[str]) -> list[str]:
-        allowed = {"nse", "finnhub", "moneycontrol"}
+        allowed = {"finnhub", "google_news"}
         if unknown := set(v) - allowed:
             raise ValueError(f"news.sources contains unknown entries: {unknown}")
         return v

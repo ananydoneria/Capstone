@@ -1,7 +1,7 @@
 """Phase 3.1b: supplementary financial news corpus via the Finnhub API.
 
 Fetches ``/api/v1/company-news`` per (ticker, month) — the same cadence and
-cache shape as ``announcements_ingest.py`` — under ``data/raw/finnhub/``.
+cache shape as ``google_news_ingest.py`` — under ``data/raw/finnhub/``.
 Resume-safe: existing month files are never re-fetched.
 
 Requires ``FINNHUB_API_KEY`` in the environment (see ``config.yaml``

@@ -3,9 +3,9 @@
 Each run (once per trading day, after ~18:30 IST when EOD data settles):
   1. Executes YESTERDAY's pending recommendation at TODAY's open (the fill the
      agent was trained to expect), updating the hypothetical portfolio.
-  2. Fetches fresh bars (nsepython) + today's NSE filings (NseKit), computes today's
-     features, one GNN forward, LLM-scores the filings (neutral if Ollama is
-     unreachable or --no-llm).
+  2. Fetches fresh bars (yfinance) + today's headlines (Google News RSS),
+     computes today's features, one GNN forward, LLM-scores the headlines
+     (neutral if Ollama is unreachable or --no-llm).
   3. Feeds the trained PPO policy today's state -> target weights for
      TOMORROW's open, printed as a human-readable order list.
   4. Appends equity + weights to the forward-test ledger.
@@ -33,7 +33,7 @@ import torch
 from src.common.config import Config, load_config
 from src.common.seeding import set_global_seed
 from src.data_pipeline.features import build_features
-from src.data_pipeline.ohlcv_ingest import OHLCV_COLS, normalize_nse_history, build_panel
+from src.data_pipeline.ohlcv_ingest import OHLCV_COLS, normalize_yf_history, build_panel
 from src.data_pipeline.relationships import build_graph, to_edge_index
 from src.env.exchange_env import ACTION_LOGIT_SCALE
 from src.env.portfolio import Portfolio
@@ -48,16 +48,16 @@ LOOKBACK_DAYS = 400  # calendar days of bars: covers 63d warmup with margin
 
 # --------------------------------------------------------------- data (today)
 def fetch_recent_panel(cfg: Config) -> pd.DataFrame:
-    from nsepython import equity_history
+    import yfinance as yf
 
     frames = {}
-    start = (pd.Timestamp.now() - pd.Timedelta(days=LOOKBACK_DAYS)).strftime("%d-%m-%Y")
-    end = pd.Timestamp.now().strftime("%d-%m-%Y")
+    start = (pd.Timestamp.now() - pd.Timedelta(days=LOOKBACK_DAYS)).strftime("%Y-%m-%d")
+    end = (pd.Timestamp.now() + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
     for ticker in cfg.universe.tickers:
-        raw = equity_history(ticker.replace(".NS", ""), "EQ", start, end)
+        raw = yf.Ticker(ticker).history(start=start, end=end, auto_adjust=False, actions=False)
         if raw is None or raw.empty:
             raise RuntimeError(f"no recent data for {ticker}")
-        frames[ticker] = normalize_nse_history(raw)[OHLCV_COLS]
+        frames[ticker] = normalize_yf_history(raw)[OHLCV_COLS]
     return build_panel(frames, cfg)
 
 
@@ -66,25 +66,18 @@ def todays_sentiment(cfg: Config, today: pd.Timestamp, no_llm: bool) -> np.ndarr
     if no_llm:
         return neutral
     try:
-        from NseKit import Nse
-
+        from src.models.llm.google_news_ingest import fetch_recent
         from src.models.llm.ollama_client import SentimentClient
 
-        nse = Nse()
         client = SentimentClient(cfg)
         out = neutral.copy()
         for i, ticker in enumerate(cfg.universe.tickers):
-            df = nse.cm_live_hist_corporate_announcement(
-                symbol=ticker.replace(".NS", ""),
-                from_date=f"{today:%d-%m-%Y}", to_date=f"{today:%d-%m-%Y}",
-            )
+            headlines = fetch_recent(ticker, cfg, window="1d")
             scores = []
-            for item in (df.to_dict("records") if df is not None else []):
-                text = " | ".join(str(item.get(k, "")) for k in ("desc", "attchmntText") if item.get(k))
-                if text:
-                    r = client.score(text)
-                    if r is not None:
-                        scores.append(r.sentiment)
+            for text in headlines:
+                r = client.score(text)
+                if r is not None:
+                    scores.append(r.sentiment)
             if scores:
                 out[i] = float(np.mean(scores))
         return out

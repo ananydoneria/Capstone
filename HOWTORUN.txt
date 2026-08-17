@@ -54,10 +54,11 @@ Either one command for everything:
 
 Or stage by stage (recommended first time, so failures are obvious):
 
-  2.1  python scripts/fetch_announcements.py
-       Downloads ~3 years of NSE filings for all 15 tickers (~800 polite
-       requests). NSE sometimes throttles: the script skips failures and is
-       RESUME-SAFE - just re-run it until it reports 0 new month files.
+  2.1  python scripts/fetch_finnhub_news.py
+       python scripts/fetch_google_news.py
+       Downloads ~3 years of news text for all 15 tickers. Finnhub needs
+       FINNHUB_API_KEY set (skips cleanly if absent). Both are RESUME-SAFE -
+       re-run until each reports 0 new month files.
 
   2.2  python scripts/run_sentiment.py
        Needs Ollama running (ollama serve starts automatically on Windows).
@@ -109,11 +110,9 @@ is deliberately NOT implemented - see CLAUDE.md Phase 8b before considering it.
 --------------------------------------------------------------------------------
  5. TROUBLESHOOTING
 --------------------------------------------------------------------------------
-- fetch_announcements gets many WARN lines: NSE throttling. Re-run later;
-  already-fetched months are cached. If it never works from this network,
-  swap requests for curl_cffi (impersonate="chrome") in
-  src/models/llm/announcements_ingest.py, or accept neutral sentiment and
-  document the limitation.
+- fetch_google_news / fetch_finnhub_news get many WARN lines: rate limiting.
+  Re-run later; already-fetched months are cached. If it never works, accept
+  neutral sentiment and document the limitation.
 - run_sentiment errors instantly: Ollama not running or model not pulled
   (ollama list should show llama3:8b-instruct-q4_K_M).
 - train_ppo warns "sentiment is a neutral placeholder": you skipped 2.2/2.3.

@@ -10,7 +10,7 @@ manager inside a cost-realistic simulated Indian exchange.
 
 | Layer | Directory | Role |
 |---|---|---|
-| Data & Exchange Sandbox | `src/data_pipeline/`, `src/env/` | OHLCV ingestion, supply-chain graph, Gymnasium exchange with Indian transaction costs |
+| Data & Exchange Sandbox | `src/data_pipeline/`, `src/env/` | OHLCV ingestion (yfinance), supply-chain graph, Gymnasium exchange with Indian transaction costs |
 | Structural (GNN) | `src/models/gnn/` | PyTorch Geometric model → shock-propagation confidence scores |
 | Semantic (LLM) | `src/models/llm/` | Local quantized Llama-3-8B (Ollama, temp 0.0) → sentiment vectors in [-1, 1] |
 | Execution (RL) | `src/rl_agent/` | Stable-Baselines3 PPO on pre-computed state vectors; Sharpe + drawdown reward |
@@ -43,10 +43,10 @@ Individual stages, in order:
 
 | Stage | Command | Compute |
 |---|---|---|
-| 1. Data pipeline | `python scripts/run_phase1.py` | light (network) |
+| 1. Data pipeline | `python scripts/run_phase1.py` | light (network, yfinance) |
 | 2. GNN training | `python scripts/train_gnn.py` | light (CPU, ~1 min) |
 | 2.5 GNN score cache | `python scripts/cache_gnn_scores.py` | light |
-| 3a. News backfill | `python scripts/fetch_announcements.py` | network-heavy (NSE rate limits) |
+| 3a. News backfill | `python scripts/fetch_finnhub_news.py` + `fetch_google_news.py` | network-heavy |
 | 3b. LLM sentiment | `python scripts/run_sentiment.py` | **workstation** — `ollama pull llama3:8b-instruct-q4_K_M` first |
 | 4. State vector | `python scripts/build_state.py` | light |
 | 5/6. Baselines | `python -m src.rl_agent.baselines` | light |

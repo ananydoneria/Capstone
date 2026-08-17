@@ -1,11 +1,11 @@
-"""Phase 3 entrypoint D: backfill supplementary Moneycontrol news corpus (network)."""
+"""Phase 3 entrypoint: backfill supplementary Google News RSS corpus (network)."""
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.models.llm.moneycontrol_ingest import fetch_all, load_corpus
+from src.models.llm.google_news_ingest import fetch_all, load_corpus
 
 if __name__ == "__main__":
     fetch_all()

@@ -7,11 +7,8 @@ pydantic>=2.7,<3.0
 h5py>=3.11
 
 # Data ingestion (Layer 1)
-nsepython>=2.9
-nsekit>=0.0.40
+yfinance>=0.2.40
 networkx>=3.3
-beautifulsoup4>=4.12
-lxml>=5.2
 
 # GNN (Layer 2) — install torch first, matching local CUDA (RTX 3090):
 #   pip install torch --index-url https://download.pytorch.org/whl/cu121
