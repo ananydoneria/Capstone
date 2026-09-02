@@ -9,9 +9,18 @@ training on the user's RTX 3090 PC), then evaluate + report.
 **TO TRAIN THE MODEL: do STEPS 0→5 in order, then STEP 6 for results.**
 The exact commands are written out in each step — run those files, nothing else.
 
-ALWAYS use `.venv\Scripts\python` (never bare `python`). Run everything from
-the project root (this folder). This file is the source of truth; HOWTORUN.txt
-is the human-facing copy of the same runbook.
+ALWAYS use the venv's python, never bare `python`. Commands in this file are
+written for Windows (`.venv\Scripts\python`); on Linux/macOS substitute
+`.venv/bin/python` everywhere — same scripts, same order, nothing else
+changes. Run everything from the project root (this folder). This file is the
+source of truth; HOWTORUN.txt is the human-facing copy of the same runbook.
+
+**What gets trained, so there is no confusion:**
+- GNN — trainable, but ALREADY TRAINED (weights shipped in this folder). Do
+  not retrain.
+- LLM — NEVER trained. It is a pretrained Ollama model used inference-only
+  to score sentiment (STEP 3).
+- PPO — the ONLY thing left to train (STEP 5, 4 runs, hours, GPU helps).
 
 ---------------------------------------------------------------------------
 ## HANDOFF: moving this folder to the training PC (stronger machine)
@@ -46,10 +55,15 @@ Run: `.venv\Scripts\python -m pytest tests -q`
 
 | Result | Meaning | Action |
 |---|---|---|
-| `32 passed` | all artifacts present | go to STEP 1 |
-| venv missing / import errors | fresh machine | do SETUP below, retry |
-| some tests **skipped** | data/weights missing (git-ignored) | do REGENERATE below, retry |
-| failures | something broke | STOP; investigate, ask user before changing code |
+| `25 passed, 7 skipped` | EXPECTED state right now (the 7 skips all need STEP 3 sentiment, which needs Ollama) | go to STEP 1 — do NOT run REGENERATE |
+| `32 passed` | everything incl. sentiment present | check model.zip below; likely skip to STEP 6 |
+| venv missing / import errors | fresh machine or copied folder | do SETUP below, retry |
+| MORE than 7 skipped | data/weights didn't copy | do REGENERATE below, retry — but see WARNING |
+| any failures | something broke | STOP; investigate, ask user before changing code |
+
+WARNING: REGENERATE re-downloads fresh yfinance data and RETRAINS the GNN,
+throwing away the already-trained weights and cached scores that shipped with
+this folder. Only run it if more than 7 tests skip, and tell the user first.
 
 **SETUP** (once): `python -m venv .venv` then
 `.venv\Scripts\python -m pip install -r requirements.txt`
