@@ -1,22 +1,11 @@
-# Data artifacts (regenerable from pipeline; keep dirs via .gitkeep)
-data/raw/*
-data/processed/*
-data/cache/*
-!data/raw/.gitkeep
-!data/processed/.gitkeep
-!data/cache/.gitkeep
-# Curated edge list IS versioned (hand-built research artifact)
-!data/raw/relationships.csv
+# Data artifacts, model weights, logs and run bundles are now VERSIONED on
+# purpose: the training PC has no Claude Code and may get the project by git
+# clone rather than a folder copy, so the cached prices/features/GNN scores,
+# the trained GNN weights and the news corpus must travel with the repo.
+# (Total ~7 MB — well inside GitHub's limits.)
 
-# Model artifacts & logs
-src/models/gnn/weights/*
-!src/models/gnn/weights/.gitkeep
-src/rl_agent/logs/*
-!src/rl_agent/logs/.gitkeep
-*.h5
-*.zip
-
-# Python
+# Python — never commit these: a venv hard-codes absolute paths and breaks on
+# any other machine (see CLAUDE.md HANDOFF), and caches are pure noise.
 __pycache__/
 *.pyc
 .venv/
@@ -26,3 +15,6 @@ __pycache__/
 # OS / editor
 .DS_Store
 Thumbs.db
+
+# Session transcript export — kept local (contains working chatter, not project content)
+conversation.md

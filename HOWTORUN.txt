@@ -9,6 +9,12 @@ TIP: opening a Claude Code chat in this folder auto-loads CLAUDE.md, which
 contains the full project state and the same runbook - just say
 "continue with the workstation runbook".
 
+NO CLAUDE CODE ON THIS PC?  Use the strongpc\ folder instead - everything
+below is automated there: strongpc\00_preflight.bat (checks + score, names a
+fix_XX_*.bat per gap), then strongpc\10_run_pipeline.bat (runs it all, logs
+every stage and the GPU to reports\strongpc\run_<timestamp>\, zips results).
+Read strongpc\README.txt first.
+
 --------------------------------------------------------------------------------
  0. SETUP ON A NEW PC (once)
 --------------------------------------------------------------------------------
@@ -28,8 +34,9 @@ HOW DID THIS FOLDER GET HERE?
   a) Copied the whole folder (incl. data/ and src/models/gnn/weights/):
      FIRST delete the copied .venv folder and recreate it (venvs hard-code
      absolute paths and break when moved between PCs; everything else copies
-     fine). Then verify with   python -m pytest tests -q   -> "32 passed"
-     means everything transferred; skip to step 2.
+     fine). Then verify with   python -m pytest tests -q   -> "83 passed,
+     8 skipped" means everything transferred (7 skips need sentiment, 1 is
+     an optional sklearn check); skip to step 2.
   b) Git clone / copied without data: data/ and GNN weights are git-ignored,
      regenerate them (needs internet, ~3 min):
          python scripts/run_phase1.py
@@ -41,7 +48,10 @@ HOW DID THIS FOLDER GET HERE?
 --------------------------------------------------------------------------------
  1. SANITY CHECK (any time)
 --------------------------------------------------------------------------------
-    python -m pytest tests -q          -> expect 32 passed
+    python -m pytest tests -q          -> expect 83 passed, 8 skipped before
+                                          sentiment; 90 passed after
+    python scripts/gnn_test_report.py  -> GNN suite + diagnostics ->
+                                          GNN_TEST_REPORT.md
     python -m src.rl_agent.baselines   -> prints buy&hold / equal-weight /
                                           momentum results on the test window
 

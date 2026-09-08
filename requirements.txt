@@ -25,7 +25,11 @@ requests>=2.31
 gymnasium>=0.29,<1.0
 stable-baselines3>=2.3,<3.0
 tensorboard>=2.16
+# train_ppo.py uses progress_bar=True, which SB3 only supports with these two
+tqdm>=4.66
+rich>=13.0
 
 # Tooling
 pytest>=8.2
 matplotlib>=3.9
+reportlab>=4.0        # scripts/gnn_test_pdf.py

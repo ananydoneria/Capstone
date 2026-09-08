@@ -1,0 +1,15 @@
+{
+  "best_val_auc": 0.61,
+  "best_epoch": 5,
+  "seed": 42,
+  "arch": "graphsage",
+  "in_dim": 6,
+  "n_train": 2133,
+  "n_val": 571,
+  "train_pos_rate": 0.1782,
+  "train_start_date": "2021-07-01",
+  "shock_z": 2.5,
+  "shock_min_move": 0.02,
+  "bidirectional_supervision": true,
+  "cascade_window_days": 5
+}

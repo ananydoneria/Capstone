@@ -12,8 +12,13 @@ exchange. They only talk to each other through cached files.
 ## Where things stand
 
 Done:
-- All code written and tested. 25 tests pass, 7 skip (the skips need the
-  sentiment step, which needs Ollama — expected for now).
+- All code written and tested. 83 tests pass, 8 skip (7 skips need the
+  sentiment step, which needs Ollama; 1 is an optional sklearn check —
+  expected for now).
+- GNN has its own test suite (`tests/gnn/`, 59 tests) and a report script
+  (`scripts/gnn_test_report.py` → `GNN_TEST_REPORT.md`). Headline: val AUC
+  0.610, beats correlation baseline (0.578) and vol baseline (0.352); seed
+  range 0.610–0.629; relies mostly on `vol_21`.
 - Data pulled: OHLCV via yfinance, 1237 days x 15 tickers.
 - GNN trained (val AUC 0.610) and its scores cached.
 - News corpus: 5,700 headlines from Google News RSS, covering the 3-year
@@ -46,8 +51,14 @@ so OHLCV is single-source now. Known limitation, noted in Sources.md.
 
 Copy the whole folder — don't git clone, the data and trained weights are
 git-ignored and only exist on disk. Delete `.venv`, recreate it, install
-requirements, run the tests (expect 25 passed / 7 skipped), then start at
+requirements, run the tests (expect 83 passed / 8 skipped), then start at
 step 1 above. Full instructions in CLAUDE.md under HANDOFF.
+
+If Claude Code isn't available there, the `strongpc/` folder has batch
+scripts that do the same thing unattended: a preflight check with a score
+and one fix script per missing item, a pipeline runner that logs every
+stage and the GPU, and a collector that zips all reports. See
+`strongpc/README.txt`.
 
 ## Separate side task
 

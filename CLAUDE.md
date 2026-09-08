@@ -27,7 +27,14 @@ source of truth; HOWTORUN.txt is the human-facing copy of the same runbook.
 
 This project was developed/data-prepped on a sandbox that is NOT the
 training machine. GNN training and the news corpus backfill are already
-done (see "Handoff progress" below) — do not redo them. On the new PC:
+done (see "Handoff progress" below) — do not redo them.
+
+**No Claude Code on the training PC?** Use the self-driving toolkit in
+`strongpc\` (read `strongpc\README.txt`): `00_preflight.bat` scores the
+machine and names a `fix_XX_*.bat` per missing item; `10_run_pipeline.bat`
+then runs STEPS 1→6 below unattended, logging every stage + GPU usage to
+`reports\strongpc\run_<timestamp>\` and zipping the results. It enforces the
+same gates and DO-NOT rules as this file. Manual route, on the new PC:
 
 1. **Copy the whole `Capstone` folder** as-is (not a fresh `git clone` —
    `data/`, `src/models/gnn/weights/` are git-ignored and only exist on
@@ -36,10 +43,11 @@ done (see "Handoff progress" below) — do not redo them. On the new PC:
    machine and will break. Everything else in the copy is fine untouched.
 3. `python -m venv .venv` then
    `.venv\Scripts\python -m pip install -r requirements.txt`
-4. `.venv\Scripts\python -m pytest tests -q` — expect `25 passed, 7 skipped`
-   (the 7 skips are correct at this point: they all need STEP 3 sentiment,
-   which needs Ollama). If you see fewer passes or any failures, something
-   didn't copy — STOP and investigate before continuing.
+4. `.venv\Scripts\python -m pytest tests -q` — expect `83 passed, 8 skipped`
+   (7 skips need STEP 3 sentiment, which needs Ollama; 1 skip is an optional
+   sklearn cross-check — both are correct at this point). If you see fewer
+   passes or any failures, something didn't copy — STOP and investigate
+   before continuing.
 5. Skip straight to **STEP 1** below (Ollama). STEP 0's REGENERATE and the
    GNN sub-step are already done; do not rerun `run_phase1.py` /
    `train_gnn.py` / `cache_gnn_scores.py` unless you deliberately want fresh
@@ -55,15 +63,15 @@ Run: `.venv\Scripts\python -m pytest tests -q`
 
 | Result | Meaning | Action |
 |---|---|---|
-| `25 passed, 7 skipped` | EXPECTED state right now (the 7 skips all need STEP 3 sentiment, which needs Ollama) | go to STEP 1 — do NOT run REGENERATE |
-| `32 passed` | everything incl. sentiment present | check model.zip below; likely skip to STEP 6 |
+| `83 passed, 8 skipped` | EXPECTED state right now (7 skips need STEP 3 sentiment, which needs Ollama; 1 skip is an optional sklearn cross-check) | go to STEP 1 — do NOT run REGENERATE |
+| `90 passed, 1 skipped` (or `91 passed`) | everything incl. sentiment present | check model.zip below; likely skip to STEP 6 |
 | venv missing / import errors | fresh machine or copied folder | do SETUP below, retry |
-| MORE than 7 skipped | data/weights didn't copy | do REGENERATE below, retry — but see WARNING |
+| MORE than 8 skipped | data/weights didn't copy | do REGENERATE below, retry — but see WARNING |
 | any failures | something broke | STOP; investigate, ask user before changing code |
 
 WARNING: REGENERATE re-downloads fresh yfinance data and RETRAINS the GNN,
 throwing away the already-trained weights and cached scores that shipped with
-this folder. Only run it if more than 7 tests skip, and tell the user first.
+this folder. Only run it if more than 8 tests skip, and tell the user first.
 
 **SETUP** (once): `python -m venv .venv` then
 `.venv\Scripts\python -m pip install -r requirements.txt`
@@ -222,8 +230,12 @@ RTX 3090 workstation, no Ollama installed here):**
   2023-07-01→2026-06-30 cached under `data/raw/google_news/`.
   `fetch_finnhub_news.py` ran but skipped (no `FINNHUB_API_KEY` set) —
   corpus is Google-News-only until a key is provided.
-- Tests: 25 passed, 7 skipped (all 7 need `build_state.py`, which needs
-  Step 3 sentiment — none of that possible without Ollama).
+- Tests: 83 passed, 8 skipped (7 need `build_state.py`, which needs Step 3
+  sentiment — impossible without Ollama; 1 is an optional sklearn check).
+- GNN test suite added (`tests/gnn/`, 59 tests) + `scripts/gnn_test_report.py`
+  which writes `GNN_TEST_REPORT.md` (baselines, calibration, per-pair AUC,
+  feature importance, seed robustness). Run it with `--seeds 7 2026` to
+  include seed retrains (~35 s each, temp dir, shipped weights untouched).
 - **Not done, needs the real workstation:** STEP 1 (Ollama +
   llama3:8b-instruct-q4_K_M), STEP 3 (run_sentiment.py), STEP 4 gate
   (build_state.py), STEP 5 (PPO ×4 arms, hours). Copy this whole folder over
