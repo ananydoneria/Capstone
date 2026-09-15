@@ -89,6 +89,9 @@ def test_saved_weights_load():
     wdir = ROOT / "src" / "models" / "gnn" / "weights"
     if not (wdir / "propagation_gnn.pt").exists():
         pytest.skip("train the GNN first (scripts/train_gnn.py)")
+    import json
     state = torch.load(wdir / "propagation_gnn.pt", weights_only=True)
-    model = PropagationGNN(in_dim=6, cfg=cfg)
+    meta = json.loads((wdir / "train_meta.json").read_text())
+    model = PropagationGNN(in_dim=meta["in_dim"], cfg=cfg, pair_dim=meta.get("pair_dim", 0),
+                           ctx_dim=meta.get("ctx_dim", 0))
     model.load_state_dict(state)  # raises on any shape/config mismatch

@@ -4,7 +4,8 @@
     python strongpc\\collect_reports.py --run-dir reports/strongpc/run_20260905_090000
 
 Copies into <run_dir>/artifacts/:
-    REPORT.md, equity_curves.png, GNN_TEST_REPORT.md/.pdf, reports/gnn_figs/
+    REPORT.md, equity_curves.png, GNN_TEST_REPORT.md/.pdf, GNN_NOTEBOOK_WALKTHROUGH.pdf,
+    the GNN notebook, reports/gnn_figs/, reports/gnn_walkforward/{WALKFORWARD.md,results.json}
     src/rl_agent/logs/baselines_test.json
     src/rl_agent/logs/ppo_<arm>/{train_meta.json,test_metrics.json,test_equity_curve.csv,events.*}
     data/processed/sentiment.parquet (+ sentiment_summary.json)
@@ -160,12 +161,16 @@ def main() -> int:
     art.mkdir(parents=True, exist_ok=True)
     note: list[str] = [f"collecting into {art}"]
 
-    for f in ("REPORT.md", "equity_curves.png", "GNN_TEST_REPORT.md", "GNN_TEST_REPORT.pdf"):
+    for f in ("REPORT.md", "equity_curves.png", "GNN_TEST_REPORT.md", "GNN_TEST_REPORT.pdf",
+              "GNN_NOTEBOOK_WALKTHROUGH.pdf", "notebooks/gnn_testing.ipynb"):
         p = ROOT / f
         if p.exists():
             copy(p, art, note)
     if (ROOT / "reports" / "gnn_figs").exists():
         copy(ROOT / "reports" / "gnn_figs", art, note)
+    for f in ("WALKFORWARD.md", "results.json"):
+        if (ROOT / "reports" / "gnn_walkforward" / f).exists():
+            copy(ROOT / "reports" / "gnn_walkforward" / f, art, note)
     if (PPO_LOGS / "baselines_test.json").exists():
         copy(PPO_LOGS / "baselines_test.json", art, note)
     for arm in ARMS:

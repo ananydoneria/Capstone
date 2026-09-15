@@ -32,6 +32,23 @@ def test_panel_integrity():
 
 
 @needs_data
+def test_panel_has_no_unadjusted_corporate_actions():
+    """Yahoo leaves demergers unadjusted (TMPV 2025-10-14 showed -51%,
+    MOTHERSON 2022-01-14 +28%). The env would book those as real P&L, so the
+    panel must be back-adjusted via data/raw/corporate_actions.csv."""
+    panel = pd.read_parquet(PANEL_PATH)
+    close = panel["Close"].unstack("ticker")
+    r = np.log(close / close.shift(1))
+    assert abs(r.loc["2025-10-14", "TMPV.NS"]) < 0.05
+    assert abs(r.loc["2022-01-14", "MOTHERSON.NS"]) < 0.10
+    worst = r.abs().stack()
+    assert worst.max() < 0.30, f"suspicious move {worst.idxmax()}: {worst.max():.2f} — corporate action?"
+    # High/Low stay consistent with Open/Close after the adjustment
+    assert (panel["High"] >= panel[["Open", "Close"]].max(axis=1) - 1e-6).all()
+    assert (panel["Low"] <= panel[["Open", "Close"]].min(axis=1) + 1e-6).all()
+
+
+@needs_data
 def test_features_no_nan_and_consistent_with_prices():
     features = feat.load_features(cfg)
     assert not features.isna().any().any()

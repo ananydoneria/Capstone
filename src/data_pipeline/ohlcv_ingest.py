@@ -11,6 +11,12 @@ panel to ``data/processed/ohlcv_panel.parquet`` (long format, one row per
 (date, ticker), columns Open/High/Low/Close/Volume). yfinance auto-adjusts for
 splits and dividends by default; we request raw (unadjusted) OHLC so the
 Indian cost model in ``src/env`` isn't fed already-adjusted prices.
+
+Yahoo does NOT adjust demergers (e.g. Tata Motors -> TMPV + TMCV, ex-date
+2025-10-14, shows as a -51% "crash"). Events listed in
+``data/raw/corporate_actions.csv`` are back-adjusted in ``build_panel`` so the
+simulated exchange doesn't book a loss that no shareholder suffered. The raw
+per-ticker Parquets stay untouched.
 """
 
 from __future__ import annotations
@@ -90,14 +96,50 @@ def load_raw(cfg: Config | None = None) -> dict[str, pd.DataFrame]:
     return frames
 
 
-def build_panel(frames: dict[str, pd.DataFrame], cfg: Config | None = None) -> pd.DataFrame:
+def corporate_actions(cfg: Config) -> pd.DataFrame:
+    path = Path(cfg.data.raw_dir) / "corporate_actions.csv"
+    if not path.exists():
+        return pd.DataFrame(columns=["ticker", "ex_date", "factor", "note"])
+    return pd.read_csv(path, comment="#")
+
+
+def apply_corporate_actions(df: pd.DataFrame, actions: pd.DataFrame, ticker: str) -> pd.DataFrame:
+    """Back-adjust prices before each ex-date by the retained-value factor.
+
+    factor 'auto' = Open(ex-date) / Close(previous day): the price at which the
+    retained business was discovered, so the ex-date return reflects only
+    trading on that day, not the value handed to shareholders as new shares.
+    Volume is left alone (a demerger does not change the share count).
+    """
+    df = df.copy()
+    price_cols = [c for c in ("Open", "High", "Low", "Close") if c in df.columns]
+    for row in actions[actions["ticker"] == ticker].itertuples(index=False):
+        ex = pd.Timestamp(row.ex_date)
+        before = df.index < ex
+        if not before.any() or ex not in df.index:
+            continue
+        if str(row.factor).strip().lower() == "auto":
+            prev_close = df.loc[before, "Close"].iloc[-1]
+            factor = float(df.loc[ex, "Open"]) / float(prev_close)
+        else:
+            factor = float(row.factor)
+        df.loc[before, price_cols] *= factor
+    return df
+
+
+def build_panel(frames: dict[str, pd.DataFrame], cfg: Config | None = None,
+                adjust: bool = True) -> pd.DataFrame:
     """Validate and align tickers onto the NSE trading calendar.
 
     Calendar = union of dates across tickers (all are liquid NSE names, so the
     union is the exchange calendar). Sparse gaps (halts) are forward-filled on
     prices with Volume=0; a ticker missing >2% of days fails loudly.
+    ``adjust`` back-adjusts listed corporate actions (demergers) first.
     """
     cfg = cfg or load_config()
+    if adjust:
+        acts = corporate_actions(cfg)
+        frames = {t: apply_corporate_actions(df, acts, t) for t, df in frames.items()}
     calendar = sorted(set().union(*(set(df.index) for df in frames.values())))
     calendar_idx = pd.DatetimeIndex(calendar, name="date")
 

@@ -34,12 +34,13 @@ HOW DID THIS FOLDER GET HERE?
   a) Copied the whole folder (incl. data/ and src/models/gnn/weights/):
      FIRST delete the copied .venv folder and recreate it (venvs hard-code
      absolute paths and break when moved between PCs; everything else copies
-     fine). Then verify with   python -m pytest tests -q   -> "83 passed,
+     fine). Then verify with   python -m pytest tests -q   -> "102 passed,
      8 skipped" means everything transferred (7 skips need sentiment, 1 is
      an optional sklearn check); skip to step 2.
   b) Git clone / copied without data: data/ and GNN weights are git-ignored,
      regenerate them (needs internet, ~3 min):
          python scripts/run_phase1.py
+         python scripts/fetch_market_data.py
          python scripts/train_gnn.py
          python scripts/cache_gnn_scores.py
          python scripts/build_state.py
@@ -48,10 +49,12 @@ HOW DID THIS FOLDER GET HERE?
 --------------------------------------------------------------------------------
  1. SANITY CHECK (any time)
 --------------------------------------------------------------------------------
-    python -m pytest tests -q          -> expect 83 passed, 8 skipped before
-                                          sentiment; 90 passed after
+    python -m pytest tests -q          -> expect 102 passed, 8 skipped before
+                                          sentiment; 109 passed after
     python scripts/gnn_test_report.py  -> GNN suite + diagnostics ->
                                           GNN_TEST_REPORT.md
+    python scripts/gnn_walkforward.py  -> out-of-sample GNN comparison
+                                          (~1 h) -> reports/gnn_walkforward/
     python -m src.rl_agent.baselines   -> prints buy&hold / equal-weight /
                                           momentum results on the test window
 

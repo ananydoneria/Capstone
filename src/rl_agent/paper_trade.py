@@ -24,7 +24,6 @@ import json
 import pickle
 import sys
 from datetime import datetime
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -34,12 +33,8 @@ from src.common.config import Config, load_config
 from src.common.seeding import set_global_seed
 from src.data_pipeline.features import build_features
 from src.data_pipeline.ohlcv_ingest import OHLCV_COLS, normalize_yf_history, build_panel
-from src.data_pipeline.relationships import build_graph, to_edge_index
 from src.env.exchange_env import ACTION_LOGIT_SCALE
 from src.env.portfolio import Portfolio
-from src.models.gnn.graph_dataset import features_tensor, supervision_pairs, window_features
-from src.models.gnn.model import PropagationGNN
-from src.models.gnn.train import WEIGHTS_DIR
 from src.rl_agent.train_ppo import LOGS_DIR
 
 PAPER_DIR = LOGS_DIR / "paper"
@@ -87,19 +82,24 @@ def todays_sentiment(cfg: Config, today: pd.Timestamp, no_llm: bool) -> np.ndarr
 
 
 def todays_gnn(cfg: Config, features: pd.DataFrame) -> np.ndarray:
-    tickers = cfg.universe.tickers
-    _, x = features_tensor(features, tickers)
-    norm = torch.load(WEIGHTS_DIR / "feature_norm.pt", weights_only=True)
-    x = (x - norm["mean"]) / norm["std"]
-    x_window = window_features(x, day_idx=x.shape[0] - 1, width=cfg.gnn.temporal_window_days)
-    ei, _ = to_edge_index(build_graph(cfg), tickers, symmetrize=True)
-    pos = {t: i for i, t in enumerate(tickers)}
-    pairs = torch.tensor([[pos[u], pos[v]] for u, v in supervision_pairs(cfg)])
-    model = PropagationGNN(in_dim=x.shape[-1], cfg=cfg)
-    model.load_state_dict(torch.load(WEIGHTS_DIR / "propagation_gnn.pt", weights_only=True))
-    model.eval()
+    """Today's propagation scores, built by the same code path as training and
+    the offline cache (legacy: from `features`; extended config: a fresh
+    trailing download of universe history + market context)."""
+    from src.models.gnn.graph_dataset import build_inference_inputs
+    from src.models.gnn.inference import load_trained
+    from src.models.gnn.train import forward_all_pairs, load_stats
+
+    stats = load_stats()
+    if cfg.gnn.history_start is None:
+        data = build_inference_inputs(cfg, stats, nodes=features)
+    else:
+        from src.data_pipeline.market_data import live_inputs
+        nodes, ctx = live_inputs(cfg)
+        data = build_inference_inputs(cfg, stats, nodes=nodes, ctx_df=ctx)
+    model = load_trained(cfg, data)
     with torch.no_grad():
-        return torch.sigmoid(model(x_window, torch.tensor(ei), pairs)).numpy().astype(np.float32)
+        logits = forward_all_pairs(model, data, len(data.dates) - 1, cfg.gnn.temporal_window_days)
+    return torch.sigmoid(logits).numpy().astype(np.float32)
 
 
 # ------------------------------------------------------------------- policy

@@ -1,76 +1,99 @@
 # GNN Test Report
 
-Generated 2026-09-02 19:05 · python 3.9.6 · torch 2.8.0 · Darwin arm64
+Generated 2026-09-15 23:52 · python 3.9.6 · torch 2.8.0 · Darwin arm64
 
-**Suite verdict: PASS** — 58 passed, 0 failed, 1 skipped (`pytest tests/gnn`: 58 passed, 1 skipped in 4.15s)
+**Suite verdict: PASS** — 76 passed, 0 failed, 1 skipped (`pytest tests/gnn`: 76 passed, 1 skipped in 7.53s)
 
 ## Headline
 
 | Metric | Value |
 |---|---|
-| Val AUC (trained checkpoint) | 0.6100 |
-| Val AUC recorded at training time | 0.6100 |
-| Train AUC | 0.6885 |
-| Train/val gap | 0.0785 |
-| Baseline: train-period return correlation | 0.5784 |
-| Baseline: dst previous-day volatility | 0.3523 |
-| Baseline: src previous-day volatility | 0.4231 |
-| Val positive rate (chance predictor AUC = 0.5) | 0.2259 |
-| Best epoch (early stopping) | 5 |
+| Val AUC (trained checkpoint) | 0.6002 |
+| Val AUC recorded at training time | 0.6002 |
+| Train AUC | 0.6721 |
+| Train/val gap | 0.0719 |
+| Baseline: train-period return correlation | 0.5269 |
+| Baseline: dst previous-day volatility (raw AUC) | 0.4868 |
+| Baseline: dst volatility rule, best direction | 0.5132 |
+| Baseline: src previous-day volatility (raw AUC) | 0.4772 |
+| Val positive rate (chance predictor AUC = 0.5) | 0.1683 |
+| Best epoch (early stopping) | 3 |
 
-GNN beats the strongest naive baseline by **+0.0316** AUC on identical validation samples.
+GNN beats the strongest naive baseline by **+0.0733** AUC on identical validation samples.
+
+## Out-of-sample: walk-forward comparison
+
+Five half-year test windows (2023H2–2025H2), expanding-window retraining, 3 seeds, 1131 samples over 183 shock days. 2026 (PPO test) never used. Current config = **V4**.
+
+| Variant | Description | AUC | 95% CI | P(better than V0) |
+|---|---|---|---|---|
+| V0 | previous model shape (2021+ data, SAGE, no pair features) | 0.5384 | 0.474–0.593 | — |
+| V1 | long history 2011+ (adjusted, masked) | 0.5823 | 0.531–0.639 | 83% |
+| V2 | V1 + edge weights (GraphConv) | 0.5691 | 0.521–0.623 | 77% |
+| V3 | V1 + pair features | 0.5886 | 0.530–0.646 | 88% |
+| **V4** | V1 + edge weights + pair features (idea 2) | 0.5842 | 0.535–0.636 | 86% |
+| V5 | V1 + India context + breadth | 0.5636 | 0.482–0.633 | 76% |
+| V6 | V1 + full context + breadth, PCA-8 | 0.5150 | 0.456–0.580 | 35% |
+| V7 | V4 + India context + breadth | 0.5660 | 0.494–0.632 | 79% |
+| V8 | V4 + full context + breadth, PCA-8 | 0.5646 | 0.510–0.625 | 74% |
+| V9 | V4 + full context + breadth (raw 151) | 0.5000 | 0.430–0.566 | 11% |
+
+Full tables: `reports/gnn_walkforward/WALKFORWARD.md`.
 
 ## Findings
 
-- Signal is real but modest: val AUC 0.610 vs 23% base rate. The static return-correlation baseline gets 0.578, so the GNN's edge over 'pairs that co-move' is +0.032 AUC — thin; most of the ranking power is structure the correlation already captures.
-- Volatility baselines are BELOW 0.5 (dst 0.352, src 0.423): in this val window, high-vol names cascaded LESS often. The vol-scaled shock threshold is doing its job (no 'volatile = shocks' shortcut).
-- Model leans on `vol_21` (+0.138 AUC when shuffled) and `volz_21`; `logret_1`, `logret_5`, `logret_21`, `mom_63` contribute ≈ nothing. Return/momentum features are effectively unused — candidate for feature work later.
-- Seed sensitivity: 0.610–0.629 across 3 seeds. Shipped seed 42 ranks 3/3 (seed 7 reached 0.629). Spread 0.019 is larger than the margin over the correlation baseline — the headline number is noisy at the ±0.01 level. Shipped epoch 5 is early; other seeds stopped later.
-- Not stable month to month: 2026-04 0.32 (n=33) to 2025-08 0.77 (n=76); 3/11 months below 0.5 (2025-10, 2025-11, 2026-04). Monthly n is 6–90 samples so noise is large, but the RL agent should not treat GNN scores as uniformly reliable.
-- Direction: downstream (supplier→OEM) AUC 0.622 vs upstream 0.630 — bidirectional supervision is justified; neither direction is dead weight.
-- Weakest pairs cluster around `BOSCHLTD.NS` (6 of the below-0.5 pairs touch it). With ~9 val samples per pair this is a hint, not a verdict — worth a look at that node's curated edges in relationships.csv.
-- Calibration bins are monotone: bottom quintile 13% actual cascades, top quintile 31%. Absolute p is inflated (mean 0.56) by pos_weight — fine for ranking, do not read as probability.
+- Signal is real but modest: val AUC 0.600 vs 17% base rate. The static return-correlation baseline gets 0.527, so the GNN's edge over 'pairs that co-move' is +0.073 AUC.
+- Volatility shortcut: ranking pairs by low previous-day volatility of the receiving stock scores 0.513 on its own (raw dst-vol AUC 0.487, src 0.477); the GNN clears it by +0.087. Under the raw-return / 21d-sigma label this rule scored 0.64 out-of-sample, which is why the label moved to sector-excess returns with a 63d sigma (config.yaml gnn.shock_basis / shock_vol_window).
+- Model leans on `volz_21` (+0.078 AUC when shuffled) and `logret_21`; `logret_5`, `present`, `pair:edge_weight`, `pair:direction`, `mom_63`, `pair:rolling_corr`, `logret_1` contribute ≈ nothing on their own (shuffling one input at a time understates correlated inputs).
+- Seed sensitivity: 0.600–0.605 across 3 seeds (spread 0.005). Shipped seed 42 ranks 3/3 (seed 2026 reached 0.605); the spread is well inside the +0.073 margin over the correlation baseline — quote the AUC as a range, but the edge itself does not depend on the seed. Shipped seed stopped at epoch 3; other seeds at 35, 31.
+- Not stable month to month: 2025-10 0.20 (n=21) to 2025-03 0.87 (n=47); 12/26 months below 0.5 (2023-05, 2023-07, 2023-10, 2023-11, 2023-12, 2024-04, 2024-06, 2024-08, 2024-09, 2025-08, 2025-10, 2025-11). Monthly n is 19–92 samples so noise is large, but the RL agent should not treat GNN scores as uniformly reliable.
+- Direction: downstream (supplier→OEM) AUC 0.581 vs upstream 0.618 — bidirectional supervision is justified; neither direction is dead weight.
+- Weakest pairs cluster around `BOSCHLTD.NS` (5 of the below-0.5 pairs touch it). With ~9 val samples per pair this is a hint, not a verdict — worth a look at that node's curated edges in relationships.csv.
+- Calibration bins are monotone: bottom quintile 10% actual cascades, top quintile 25%. Absolute p is inflated (mean 0.40) by pos_weight — fine for ranking, do not read as probability.
 - Inference cache is bit-identical to a fresh forward pass and provably free of look-ahead (future-day perturbation test). Downstream RL state is safe to trust on that front.
-- Train/val gap 0.079 with early stop at epoch 5 — no overfitting concern.
+- Train/val gap 0.072 with early stop at epoch 3 — no overfitting concern.
+- Out-of-sample (walk-forward, 183 shock days in 2023H2–2025H2): current config (V4) 0.584 vs previous model 0.538 (better in 86% of day-block bootstrap draws). See reports/gnn_walkforward/WALKFORWARD.md.
 
 ## Data under test
 
 | Item | Value |
 |---|---|
-| Timeline | 1174 days, 2021-10-01 -> 2026-06-30 |
-| Nodes / features | 15 / 6 |
+| Timeline | 3635 days, 2011-10-03 -> 2026-06-30 |
+| Nodes / node features | 15 / 7 |
+| Pair-head inputs | rolling_corr, edge_weight, direction |
+| History start | 2011-10-01 |
 | Curated edges / message-passing edges / scored pairs | 32 / 64 / 64 |
-| Train samples | 2133 (17.8% positive), 2021-10-06 -> 2025-05-15 |
-| Val samples | 571 (22.6% positive), 2025-07-03 -> 2026-06-17 |
-| Overall shock-day rate | 3.61% |
-| Config | arch=graphsage, hidden=64, layers=2, dropout=0.4, window=10, gru=32, k=5, shock_z=2.5, min_move=0.02, seed=42 |
+| Train samples | 4357 (16.9% positive), 2012-01-06 -> 2023-04-10 |
+| Val samples | 1206 (16.8% positive), 2023-05-12 -> 2025-12-03 |
+| Overall shock-day rate | 2.70% |
+| Config | arch=graphconv, hidden=64, layers=2, dropout=0.4, window=10, gru=32, k=5, shock_z=2.5, min_move=0.02, shock_basis=excess, shock_sigma=63d, seed=42 |
 
 Shock days per ticker:
 
 | Ticker | Shock days |
 |---|---|
-| EXIDEIND.NS | 51 |
-| TMPV.NS | 50 |
-| EICHERMOT.NS | 45 |
-| APOLLOTYRE.NS | 43 |
-| ASHOKLEY.NS | 42 |
-| BOSCHLTD.NS | 42 |
-| MARUTI.NS | 42 |
-| MOTHERSON.NS | 42 |
-| BAJAJ-AUTO.NS | 41 |
-| HEROMOTOCO.NS | 41 |
-| M&M.NS | 41 |
-| SONACOMS.NS | 41 |
-| TVSMOTOR.NS | 41 |
-| BHARATFORG.NS | 37 |
-| UNOMINDA.NS | 37 |
+| ASHOKLEY.NS | 110 |
+| TMPV.NS | 105 |
+| EXIDEIND.NS | 105 |
+| MOTHERSON.NS | 101 |
+| EICHERMOT.NS | 100 |
+| M&M.NS | 99 |
+| TVSMOTOR.NS | 99 |
+| BAJAJ-AUTO.NS | 97 |
+| HEROMOTOCO.NS | 97 |
+| BHARATFORG.NS | 95 |
+| BOSCHLTD.NS | 92 |
+| UNOMINDA.NS | 92 |
+| MARUTI.NS | 91 |
+| APOLLOTYRE.NS | 91 |
+| SONACOMS.NS | 34 |
 
 ## Direction split (val)
 
 | Direction | n | pos rate | AUC |
 |---|---|---|---|
-| downstream | 272 | 19.1% | 0.6224 |
-| upstream | 299 | 25.8% | 0.6303 |
+| downstream | 619 | 14.9% | 0.5807 |
+| upstream | 587 | 18.9% | 0.6179 |
 
 `downstream` = curated supplier→buyer edge; `upstream` = reversed edge.
 
@@ -78,18 +101,36 @@ Shock days per ticker:
 
 | Month | n | pos | AUC |
 |---|---|---|---|
-| 2025-07 | 73 | 15 | 0.6391 |
-| 2025-08 | 76 | 18 | 0.7711 |
-| 2025-09 | 30 | 5 | 0.6080 |
-| 2025-10 | 39 | 8 | 0.4718 |
-| 2025-11 | 49 | 10 | 0.3769 |
+| 2023-05 | 51 | 6 | 0.4630 |
+| 2023-06 | 30 | 4 | 0.5481 |
+| 2023-07 | 49 | 4 | 0.4222 |
+| 2023-08 | 38 | 5 | 0.5333 |
+| 2023-09 | 14 | 0 | n/a |
+| 2023-10 | 26 | 3 | 0.4638 |
+| 2023-11 | 59 | 19 | 0.3724 |
+| 2023-12 | 42 | 2 | 0.4750 |
+| 2024-01 | 59 | 12 | 0.5674 |
+| 2024-02 | 79 | 16 | 0.5208 |
+| 2024-03 | 27 | 4 | 0.7717 |
+| 2024-04 | 24 | 4 | 0.4875 |
+| 2024-05 | 38 | 6 | 0.6250 |
+| 2024-06 | 37 | 4 | 0.4318 |
+| 2024-07 | 17 | 0 | n/a |
+| 2024-08 | 22 | 2 | 0.3750 |
+| 2024-09 | 41 | 7 | 0.4496 |
+| 2024-10 | 27 | 1 | 0.6538 |
+| 2024-11 | 31 | 3 | 0.5595 |
+| 2025-01 | 77 | 38 | 0.7045 |
+| 2025-02 | 92 | 16 | 0.5493 |
+| 2025-03 | 47 | 1 | 0.8696 |
+| 2025-04 | 19 | 1 | 0.5556 |
+| 2025-05 | 6 | 0 | n/a |
+| 2025-07 | 45 | 3 | 0.6111 |
+| 2025-08 | 76 | 19 | 0.4718 |
+| 2025-09 | 40 | 6 | 0.7255 |
+| 2025-10 | 21 | 1 | 0.2000 |
+| 2025-11 | 66 | 16 | 0.4725 |
 | 2025-12 | 6 | 0 | n/a |
-| 2026-01 | 86 | 34 | 0.5639 |
-| 2026-02 | 39 | 8 | 0.5605 |
-| 2026-03 | 67 | 20 | 0.7245 |
-| 2026-04 | 33 | 4 | 0.3190 |
-| 2026-05 | 47 | 5 | 0.7333 |
-| 2026-06 | 26 | 2 | 0.6458 |
 
 Months with a single class show `n/a`. Small n → noisy.
 
@@ -97,13 +138,13 @@ Months with a single class show `n/a`. Small n → noisy.
 
 | Bin | n | mean predicted p | actual cascade rate |
 |---|---|---|---|
-| 0 | 115 | 0.2870 | 0.1304 |
-| 1 | 114 | 0.4072 | 0.1316 |
-| 2 | 114 | 0.5698 | 0.2632 |
-| 3 | 114 | 0.7161 | 0.2982 |
-| 4 | 114 | 0.8159 | 0.3070 |
+| 0 | 242 | 0.3387 | 0.0992 |
+| 1 | 241 | 0.3690 | 0.1286 |
+| 2 | 241 | 0.3955 | 0.1743 |
+| 3 | 241 | 0.4283 | 0.1909 |
+| 4 | 241 | 0.4858 | 0.2490 |
 
-Score distribution: mean 0.559, std 0.199, range [0.155, 0.864]. Training uses `pos_weight` (class re-balancing), so absolute p is shifted upward relative to the 22.6% base rate by design — ranking (AUC) is what the RL state consumes, not calibrated probability. Monotone bins = healthy.
+Score distribution: mean 0.403, std 0.054, range [0.297, 0.579]. Training uses `pos_weight` (class re-balancing), so absolute p is shifted upward relative to the 16.8% base rate by design — ranking (AUC) is what the RL state consumes, not calibrated probability. Monotone bins = healthy.
 
 ## Per-pair val AUC (pairs with ≥8 samples and both classes)
 
@@ -111,50 +152,54 @@ Top 5:
 
 | Pair | n | pos | AUC |
 |---|---|---|---|
-| BHARATFORG.NS->EICHERMOT.NS | 9 | 2 | 1.0000 |
-| BHARATFORG.NS->M&M.NS | 9 | 2 | 1.0000 |
-| EXIDEIND.NS->TMPV.NS | 9 | 1 | 1.0000 |
-| EXIDEIND.NS->EICHERMOT.NS | 9 | 4 | 0.9500 |
-| EXIDEIND.NS->MARUTI.NS | 9 | 1 | 0.8750 |
+| BAJAJ-AUTO.NS->EXIDEIND.NS | 13 | 1 | 1.0000 |
+| SONACOMS.NS->TMPV.NS | 18 | 1 | 1.0000 |
+| UNOMINDA.NS->MARUTI.NS | 12 | 1 | 1.0000 |
+| EXIDEIND.NS->TMPV.NS | 21 | 1 | 0.9500 |
+| EXIDEIND.NS->BAJAJ-AUTO.NS | 21 | 1 | 0.9000 |
 
 Bottom 5:
 
 | Pair | n | pos | AUC |
 |---|---|---|---|
-| BOSCHLTD.NS->ASHOKLEY.NS | 9 | 2 | 0.3571 |
-| BOSCHLTD.NS->TMPV.NS | 9 | 2 | 0.3571 |
-| HEROMOTOCO.NS->BOSCHLTD.NS | 9 | 2 | 0.3571 |
-| BOSCHLTD.NS->EICHERMOT.NS | 9 | 2 | 0.2857 |
-| BOSCHLTD.NS->MARUTI.NS | 9 | 4 | 0.2000 |
+| BHARATFORG.NS->M&M.NS | 19 | 3 | 0.3958 |
+| BHARATFORG.NS->ASHOKLEY.NS | 19 | 4 | 0.3833 |
+| MARUTI.NS->UNOMINDA.NS | 16 | 1 | 0.3333 |
+| TMPV.NS->BOSCHLTD.NS | 15 | 3 | 0.3333 |
+| MOTHERSON.NS->TMPV.NS | 17 | 1 | 0.1875 |
 
-36 pairs evaluable; 7 below 0.5 (per-pair n is small — treat as indicative, not conclusive).
+61 pairs evaluable; 14 below 0.5 (per-pair n is small — treat as indicative, not conclusive).
 
 ## Feature permutation importance (val AUC drop when feature is shuffled)
 
 | Feature | AUC drop |
 |---|---|
-| vol_21 | +0.1376 |
-| volz_21 | +0.0446 |
-| logret_1 | +0.0062 |
-| logret_5 | -0.0015 |
-| logret_21 | -0.0083 |
-| mom_63 | -0.0083 |
+| volz_21 | +0.0779 |
+| logret_21 | +0.0350 |
+| vol_21 | +0.0333 |
+| logret_5 | +0.0006 |
+| present | +0.0002 |
+| pair:edge_weight | +0.0000 |
+| pair:direction | +0.0000 |
+| mom_63 | -0.0005 |
+| pair:rolling_corr | -0.0021 |
+| logret_1 | -0.0044 |
 
 Positive = model relies on it. Near-zero/negative = ignored or noise.
 
 ## Inference cache
 
-`gnn_scores.parquet`: 1174 days × 64 pairs, mean 0.556, std 0.186. Max |cached − recomputed| = 0.00e+00 (bit-for-bit reproducible).
+`gnn_scores.parquet`: 3635 days × 64 pairs, mean 0.405, std 0.055. Max |cached − recomputed| = 0.00e+00 (bit-for-bit reproducible).
 
 ## Seed robustness
 
 | Seed | Val AUC | Best epoch | Train time (s) |
 |---|---|---|---|
-| 42 | 0.6100 | 5 | shipped |
-| 7 | 0.6291 | 15 | 32.6 |
-| 2026 | 0.6189 | 20 | 38.4 |
+| 42 | 0.6002 | 3 | shipped |
+| 7 | 0.6037 | 35 | 141.2 |
+| 2026 | 0.6047 | 31 | 137.2 |
 
-Range across seeds: 0.6100 – 0.6291 (spread 0.0191). Retrains went to a temp dir; shipped weights untouched.
+Range across seeds: 0.6002 – 0.6047 (spread 0.0045). Retrains went to a temp dir; shipped weights untouched.
 
 ## Test inventory
 
@@ -173,11 +218,29 @@ Range across seeds: 0.6100 – 0.6291 (spread 0.0191). Retrains went to a temp d
 | PASSED | tests/gnn/test_dataset.py::test_real_split_counts_match_train_meta |
 | PASSED | tests/gnn/test_dataset.py::test_real_both_classes_present_in_val |
 | PASSED | tests/gnn/test_dataset.py::test_real_samples_reference_valid_pairs |
+| PASSED | tests/gnn/test_extended_inputs.py::test_demerger_back_adjustment_neutralises_the_ex_date |
+| PASSED | tests/gnn/test_extended_inputs.py::test_asof_lag_zero_uses_same_day_lag_one_uses_previous_day |
+| PASSED | tests/gnn/test_extended_inputs.py::test_asof_marks_stale_values_missing |
+| PASSED | tests/gnn/test_extended_inputs.py::test_series_features_level_vs_price |
+| PASSED | tests/gnn/test_extended_inputs.py::test_graphconv_uses_edge_weights_sage_does_not |
+| PASSED | tests/gnn/test_extended_inputs.py::test_head_accepts_pair_features_and_context |
+| PASSED | tests/gnn/test_extended_inputs.py::test_presence_masking |
+| PASSED | tests/gnn/test_extended_inputs.py::test_extended_shapes_and_finiteness |
+| PASSED | tests/gnn/test_extended_inputs.py::test_pca_basis_fit_on_train_days_only |
+| PASSED | tests/gnn/test_extended_inputs.py::test_inference_inputs_match_training_inputs |
+| PASSED | tests/gnn/test_extended_inputs.py::test_node_features_no_lookahead |
+| PASSED | tests/gnn/test_extended_inputs.py::test_market_context_no_lookahead |
+| PASSED | tests/gnn/test_extended_inputs.py::test_rolling_corr_pair_feature_no_lookahead |
+| PASSED | tests/gnn/test_extended_inputs.py::test_labels_never_read_past_label_end_date |
 | PASSED | tests/gnn/test_labels.py::test_shock_threshold_scales_with_previous_day_vol |
 | PASSED | tests/gnn/test_labels.py::test_shock_day_zero_never_flags |
 | PASSED | tests/gnn/test_labels.py::test_shock_min_move_floor |
 | PASSED | tests/gnn/test_labels.py::test_shock_uses_previous_not_same_day_vol |
 | PASSED | tests/gnn/test_labels.py::test_shock_matrix_shape_and_dtype |
+| PASSED | tests/gnn/test_labels.py::test_shock_vol_window_overrides_feature_window |
+| PASSED | tests/gnn/test_labels.py::test_excess_basis_uses_sector_excess_return_and_its_own_sigma |
+| PASSED | tests/gnn/test_labels.py::test_excess_basis_requires_excess_column |
+| PASSED | tests/gnn/test_labels.py::test_unknown_shock_basis_rejected |
 | PASSED | tests/gnn/test_labels.py::test_label_window_is_exclusive_of_shock_day |
 | PASSED | tests/gnn/test_labels.py::test_label_window_boundary_inclusive_at_k |
 | PASSED | tests/gnn/test_labels.py::test_only_shocked_source_generates_samples |

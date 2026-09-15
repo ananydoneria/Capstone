@@ -15,6 +15,7 @@ choice /C YN /M "Continue and regenerate anyway"
 if errorlevel 2 ( echo Cancelled. & pause & exit /b 0 )
 if not exist "%VENV_PY%" ( echo .venv missing - run fix_02_venv.bat first & pause & exit /b 1 )
 "%VENV_PY%" scripts\run_phase1.py        || ( echo run_phase1 failed & pause & exit /b 1 )
+"%VENV_PY%" scripts\fetch_market_data.py || ( echo fetch_market_data failed & pause & exit /b 1 )
 "%VENV_PY%" scripts\train_gnn.py         || ( echo train_gnn failed & pause & exit /b 1 )
 "%VENV_PY%" scripts\cache_gnn_scores.py  || ( echo cache_gnn_scores failed & pause & exit /b 1 )
 echo.

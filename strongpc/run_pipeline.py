@@ -23,7 +23,7 @@ Stages (keys usable with --only / --from / --skip):
                      scripts/train_ppo.py --ablation <arm> (skipped if model.zip exists)
     evaluate         scripts/evaluate.py
     report           scripts/report.py
-    tests_after      pytest tests (expect 90 passed)
+    tests_after      pytest tests (expect 109 passed)
     gnn_report       scripts/gnn_test_report.py + gnn_test_pdf.py
     collect          strongpc/collect_reports.py (bundle + zip)
 

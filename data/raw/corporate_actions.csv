@@ -1,0 +1,6 @@
+# Corporate actions Yahoo does NOT adjust for (it handles splits/bonuses).
+# factor = retained-value multiplier applied to prices BEFORE ex_date;
+# 'auto' = Open(ex_date) / Close(previous day).
+ticker,ex_date,factor,note
+TMPV.NS,2025-10-14,auto,"Tata Motors demerger: CV business spun off as TMCV; shows as -51% unadjusted"
+MOTHERSON.NS,2022-01-14,auto,"Motherson Sumi demerger of domestic wiring harness (MSWIL, 1:1, record 2022-01-17); Yahoo shows +28% discontinuity while Nifty Auto fell 0.4%"

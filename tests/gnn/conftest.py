@@ -57,7 +57,8 @@ def train_meta(cfg: Config) -> dict:
 
 @pytest.fixture(scope="session")
 def trained_model(cfg: Config, real_data: GraphData) -> PropagationGNN:
-    model = PropagationGNN(in_dim=real_data.x.shape[-1], cfg=cfg)
+    from src.models.gnn.train import make_model
+    model = make_model(cfg, real_data)
     model.load_state_dict(torch.load(WEIGHTS_DIR / "propagation_gnn.pt", weights_only=True))
     model.eval()
     return model

@@ -1,0 +1,847 @@
+{
+  "download": {
+    "fetched": {
+      "MARUTI.NS": {
+        "role": "universe",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "TMPV.NS": {
+        "role": "universe",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "M&M.NS": {
+        "role": "universe",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "BAJAJ-AUTO.NS": {
+        "role": "universe",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "HEROMOTOCO.NS": {
+        "role": "universe",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "TVSMOTOR.NS": {
+        "role": "universe",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "EICHERMOT.NS": {
+        "role": "universe",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "ASHOKLEY.NS": {
+        "role": "universe",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "MOTHERSON.NS": {
+        "role": "universe",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "BOSCHLTD.NS": {
+        "role": "universe",
+        "rows": 3971,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "BHARATFORG.NS": {
+        "role": "universe",
+        "rows": 3971,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "SONACOMS.NS": {
+        "role": "universe",
+        "rows": 1242,
+        "start": "2021-06-24",
+        "end": "2026-06-30"
+      },
+      "UNOMINDA.NS": {
+        "role": "universe",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "EXIDEIND.NS": {
+        "role": "universe",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "APOLLOTYRE.NS": {
+        "role": "universe",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^NSEI": {
+        "role": "macro:india",
+        "rows": 3948,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^CNXAUTO": {
+        "role": "macro:india",
+        "rows": 3667,
+        "start": "2011-07-12",
+        "end": "2026-06-30"
+      },
+      "^NSEBANK": {
+        "role": "macro:india",
+        "rows": 3963,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^CNXIT": {
+        "role": "macro:india",
+        "rows": 3963,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^CNXMETAL": {
+        "role": "macro:india",
+        "rows": 3667,
+        "start": "2011-07-12",
+        "end": "2026-06-30"
+      },
+      "^CNXENERGY": {
+        "role": "macro:india",
+        "rows": 3779,
+        "start": "2011-01-31",
+        "end": "2026-06-30"
+      },
+      "^CNXFMCG": {
+        "role": "macro:india",
+        "rows": 3778,
+        "start": "2011-01-31",
+        "end": "2026-06-30"
+      },
+      "^CNXPHARMA": {
+        "role": "macro:india",
+        "rows": 3793,
+        "start": "2011-01-31",
+        "end": "2026-06-30"
+      },
+      "^NSMIDCP": {
+        "role": "macro:india",
+        "rows": 3963,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^CNXINFRA": {
+        "role": "macro:india",
+        "rows": 3914,
+        "start": "2010-07-19",
+        "end": "2026-06-30"
+      },
+      "^CNXREALTY": {
+        "role": "macro:india",
+        "rows": 3914,
+        "start": "2010-07-19",
+        "end": "2026-06-30"
+      },
+      "^CNXPSUBANK": {
+        "role": "macro:india",
+        "rows": 3779,
+        "start": "2011-01-31",
+        "end": "2026-06-30"
+      },
+      "^INDIAVIX": {
+        "role": "macro:india",
+        "rows": 3947,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^N225": {
+        "role": "macro:asia",
+        "rows": 3933,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^HSI": {
+        "role": "macro:asia",
+        "rows": 3957,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "000001.SS": {
+        "role": "macro:asia",
+        "rows": 3899,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^KS11": {
+        "role": "macro:asia",
+        "rows": 3952,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^TWII": {
+        "role": "macro:asia",
+        "rows": 3926,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^GSPC": {
+        "role": "macro:western",
+        "rows": 4045,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^IXIC": {
+        "role": "macro:western",
+        "rows": 4045,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^DJI": {
+        "role": "macro:western",
+        "rows": 4045,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^FTSE": {
+        "role": "macro:western",
+        "rows": 4061,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^GDAXI": {
+        "role": "macro:western",
+        "rows": 4080,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^STOXX50E": {
+        "role": "macro:western",
+        "rows": 4032,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^VIX": {
+        "role": "macro:western",
+        "rows": 4046,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^TNX": {
+        "role": "macro:western",
+        "rows": 4043,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "^IRX": {
+        "role": "macro:western",
+        "rows": 4036,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "CL=F": {
+        "role": "macro:commodity",
+        "rows": 4044,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "BZ=F": {
+        "role": "macro:commodity",
+        "rows": 4015,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "NG=F": {
+        "role": "macro:commodity",
+        "rows": 4046,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "GC=F": {
+        "role": "macro:commodity",
+        "rows": 4044,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "SI=F": {
+        "role": "macro:commodity",
+        "rows": 4044,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "HG=F": {
+        "role": "macro:commodity",
+        "rows": 4045,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "PL=F": {
+        "role": "macro:commodity",
+        "rows": 4043,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "PA=F": {
+        "role": "macro:commodity",
+        "rows": 4042,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "INR=X": {
+        "role": "macro:fx",
+        "rows": 4186,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "DX-Y.NYB": {
+        "role": "macro:fx",
+        "rows": 4046,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "EURINR=X": {
+        "role": "macro:fx",
+        "rows": 4188,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "JPYINR=X": {
+        "role": "macro:fx",
+        "rows": 4187,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "TM": {
+        "role": "macro:global_auto",
+        "rows": 4045,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "HMC": {
+        "role": "macro:global_auto",
+        "rows": 4045,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "F": {
+        "role": "macro:global_auto",
+        "rows": 4045,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "GM": {
+        "role": "macro:global_auto",
+        "rows": 3925,
+        "start": "2010-11-18",
+        "end": "2026-06-30"
+      },
+      "STLA": {
+        "role": "macro:global_auto",
+        "rows": 4039,
+        "start": "2010-06-09",
+        "end": "2026-06-30"
+      },
+      "SLX": {
+        "role": "macro:global_auto",
+        "rows": 4045,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "XLI": {
+        "role": "macro:global_auto",
+        "rows": 4045,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "CARZ": {
+        "role": "macro:global_auto",
+        "rows": 3807,
+        "start": "2011-05-10",
+        "end": "2026-06-30"
+      },
+      "RELIANCE.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "TCS.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "HDFCBANK.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "ICICIBANK.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "INFY.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "HINDUNILVR.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "ITC.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "SBIN.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "BHARTIARTL.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "KOTAKBANK.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "LT.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "AXISBANK.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "ASIANPAINT.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "SUNPHARMA.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "TITAN.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "ULTRACEMCO.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "BAJFINANCE.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "WIPRO.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "NESTLEIND.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "HCLTECH.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "TECHM.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "POWERGRID.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "NTPC.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "TATASTEEL.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "JSWSTEEL.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "ADANIENT.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "ADANIPORTS.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "ONGC.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "COALINDIA.NS": {
+        "role": "basket:largecap",
+        "rows": 3861,
+        "start": "2010-11-04",
+        "end": "2026-06-30"
+      },
+      "BAJAJFINSV.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "GRASIM.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "HINDALCO.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "DRREDDY.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "CIPLA.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "BRITANNIA.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "APOLLOHOSP.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "TATACONSUM.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "SBILIFE.NS": {
+        "role": "basket:largecap",
+        "rows": 2161,
+        "start": "2017-10-03",
+        "end": "2026-06-30"
+      },
+      "HDFCLIFE.NS": {
+        "role": "basket:largecap",
+        "rows": 2129,
+        "start": "2017-11-17",
+        "end": "2026-06-30"
+      },
+      "INDUSINDBK.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "BPCL.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "SHRIRAMFIN.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "TRENT.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "BEL.NS": {
+        "role": "basket:largecap",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "MRF.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3971,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "BALKRISIND.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3971,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "TIINDIA.NS": {
+        "role": "basket:auto_ext",
+        "rows": 2140,
+        "start": "2017-11-02",
+        "end": "2026-06-30"
+      },
+      "CEATLTD.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "ESCORTS.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "ENDURANCE.NS": {
+        "role": "basket:auto_ext",
+        "rows": 2398,
+        "start": "2016-10-19",
+        "end": "2026-06-30"
+      },
+      "SUNDRMFAST.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3971,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "SCHAEFFLER.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "ZFCVINDIA.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "OLECTRA.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "FORCEMOT.NS": {
+        "role": "basket:auto_ext",
+        "rows": 1659,
+        "start": "2019-08-19",
+        "end": "2026-06-30"
+      },
+      "JAMNAAUTO.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3837,
+        "start": "2010-12-10",
+        "end": "2026-06-30"
+      },
+      "GABRIEL.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "SUPRAJIT.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3971,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "LUMAXTECH.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3971,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "MINDACORP.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3523,
+        "start": "2012-03-19",
+        "end": "2026-06-30"
+      },
+      "CRAFTSMAN.NS": {
+        "role": "basket:auto_ext",
+        "rows": 1300,
+        "start": "2021-03-25",
+        "end": "2026-06-30"
+      },
+      "SANSERA.NS": {
+        "role": "basket:auto_ext",
+        "rows": 1179,
+        "start": "2021-09-24",
+        "end": "2026-06-30"
+      },
+      "VARROC.NS": {
+        "role": "basket:auto_ext",
+        "rows": 1969,
+        "start": "2018-07-09",
+        "end": "2026-06-30"
+      },
+      "ASAHIINDIA.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3975,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "ARE&M.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "JKTYRE.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "SUBROS.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3971,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "TIMKEN.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3971,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "SKFINDIA.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      },
+      "WHEELS.NS": {
+        "role": "basket:auto_ext",
+        "rows": 3972,
+        "start": "2010-06-01",
+        "end": "2026-06-30"
+      }
+    },
+    "failed": {}
+  },
+  "build": {
+    "calendar": [
+      "2010-06-01",
+      "2026-06-30",
+      3972
+    ],
+    "node_features": [
+      "logret_1",
+      "logret_5",
+      "logret_21",
+      "vol_21",
+      "mom_63",
+      "volz_21",
+      "excess_ret_1"
+    ],
+    "context_columns": 151,
+    "context_groups": {
+      "india": 39,
+      "asia": 15,
+      "western": 27,
+      "commodity": 24,
+      "fx": 12,
+      "global_auto": 24,
+      "breadth": 10
+    },
+    "basket_sizes": {
+      "largecap": 44,
+      "auto_ext": 26
+    },
+    "macro_series": 47,
+    "universe_first_bar": {
+      "MARUTI.NS": "2010-06-01",
+      "TMPV.NS": "2010-06-01",
+      "M&M.NS": "2010-06-01",
+      "BAJAJ-AUTO.NS": "2010-06-01",
+      "HEROMOTOCO.NS": "2010-06-01",
+      "TVSMOTOR.NS": "2010-06-01",
+      "EICHERMOT.NS": "2010-06-01",
+      "ASHOKLEY.NS": "2010-06-01",
+      "MOTHERSON.NS": "2010-06-01",
+      "BOSCHLTD.NS": "2010-06-01",
+      "BHARATFORG.NS": "2010-06-01",
+      "SONACOMS.NS": "2021-06-24",
+      "UNOMINDA.NS": "2010-06-01",
+      "EXIDEIND.NS": "2010-06-01",
+      "APOLLOTYRE.NS": "2010-06-01"
+    }
+  }
+}

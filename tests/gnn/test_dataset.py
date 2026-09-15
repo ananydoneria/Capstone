@@ -69,7 +69,8 @@ def test_graphdata_window_agrees_with_standalone():
 def test_real_shapes(cfg, real_data):
     T, N, F = real_data.x.shape
     assert N == len(cfg.universe.tickers) == 15
-    assert F == 6
+    assert F == len(real_data.node_feature_names)
+    assert real_data.node_feature_names[:6] == ["logret_1", "logret_5", "logret_21", "vol_21", "mom_63", "volz_21"]
     assert T == len(real_data.dates)
     assert not torch.isnan(real_data.x).any()
     assert torch.isfinite(real_data.x).all()
@@ -98,9 +99,11 @@ def test_real_supervision_pairs_bidirectional(cfg, real_data):
 def test_real_train_normalization_uses_train_dates_only(real_data):
     train_dates = {s.date for s in real_data.train}
     mask = torch.tensor([d in train_dates for d in real_data.dates])
-    flat = real_data.x[mask].reshape(-1, real_data.x.shape[-1])
-    assert torch.allclose(flat.mean(0), torch.zeros(6), atol=1e-4)
-    assert torch.allclose(flat.std(0), torch.ones(6), atol=1e-3)
+    f = len(real_data.norm_mean)                       # normalised channels (excludes 'present')
+    x = real_data.x[mask][..., :f]
+    flat = x[real_data.present[mask]]                  # absent node-days are excluded from the stats
+    assert torch.allclose(flat.mean(0), torch.zeros(f), atol=1e-4)
+    assert torch.allclose(flat.std(0), torch.ones(f), atol=1e-3)
     assert (real_data.norm_std > 0).all()
 
 

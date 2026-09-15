@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import functools
 from pathlib import Path
+from typing import List, Optional
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
@@ -87,6 +88,50 @@ class GnnCfg(BaseModel):
     epochs: int
     early_stopping_patience: int
     val_tail_fraction: float
+    # Extended inputs (src/data_pipeline/market_data.py). Defaults reproduce
+    # the original model exactly: 2021+ history, no context, no pair features.
+    history_start: Optional[str] = None   # e.g. "2011-10-01"; None = legacy features.parquet
+    market_context: str = "none"          # none | india | full
+    breadth: bool = False                 # market-breadth basket features
+    pair_features: List[str] = []         # subset of rolling_corr, edge_weight, direction
+    corr_window: int = 63                 # trailing window for rolling_corr
+    ctx_pca: int = 0                      # >0: compress market context to this many PCA factors (train-fit)
+    label_end_date: Optional[str] = None  # no train/val label may read prices after this date
+    # Shock definition. "raw": |logret_1| vs its own trailing sigma (legacy).
+    # "excess": stock return minus Nifty Auto vs THAT series' sigma — strips
+    # the common market move. shock_vol_window: sigma window for the threshold;
+    # None = features.volatility_window (21). A 21d sigma mean-reverts fast, so
+    # calm stocks clear it in the following week; 63d removes that shortcut.
+    shock_basis: str = "raw"              # raw | excess
+    shock_vol_window: Optional[int] = None
+
+    @field_validator("arch")
+    @classmethod
+    def _known_arch(cls, v: str) -> str:
+        if v not in {"graphsage", "gat", "graphconv"}:
+            raise ValueError(f"gnn.arch must be graphsage | gat | graphconv, got {v!r}")
+        return v
+
+    @field_validator("shock_basis")
+    @classmethod
+    def _known_shock_basis(cls, v: str) -> str:
+        if v not in {"raw", "excess"}:
+            raise ValueError(f"gnn.shock_basis must be raw | excess, got {v!r}")
+        return v
+
+    @field_validator("market_context")
+    @classmethod
+    def _known_context(cls, v: str) -> str:
+        if v not in {"none", "india", "full"}:
+            raise ValueError(f"gnn.market_context must be none | india | full, got {v!r}")
+        return v
+
+    @field_validator("pair_features")
+    @classmethod
+    def _known_pair_features(cls, v: list[str]) -> list[str]:
+        if unknown := set(v) - {"rolling_corr", "edge_weight", "direction"}:
+            raise ValueError(f"gnn.pair_features contains unknown entries: {unknown}")
+        return v
 
 
 class LlmCfg(BaseModel):

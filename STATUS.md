@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-08-27, branch `match-deck-tech-stack`.
+Last updated: 2026-09-15, branch `match-deck-tech-stack`.
 
 ## What this is
 
@@ -12,15 +12,24 @@ exchange. They only talk to each other through cached files.
 ## Where things stand
 
 Done:
-- All code written and tested. 83 tests pass, 8 skip (7 skips need the
+- All code written and tested. 102 tests pass, 8 skip (7 skips need the
   sentiment step, which needs Ollama; 1 is an optional sklearn check —
   expected for now).
-- GNN has its own test suite (`tests/gnn/`, 59 tests) and a report script
-  (`scripts/gnn_test_report.py` → `GNN_TEST_REPORT.md`). Headline: val AUC
-  0.610, beats correlation baseline (0.578) and vol baseline (0.352); seed
-  range 0.610–0.629; relies mostly on `vol_21`.
-- Data pulled: OHLCV via yfinance, 1237 days x 15 tickers.
-- GNN trained (val AUC 0.610) and its scores cached.
+- Data pulled: OHLCV via yfinance, 1237 days x 15 tickers for the RL window,
+  plus 2011+ history, Nifty Auto and market-context series for the GNN
+  (`scripts/fetch_market_data.py`). Two demergers Yahoo left unadjusted
+  (Tata Motors Oct 2025, Motherson Jan 2022) are corrected everywhere.
+- GNN reworked (Sep 2026). The cascade label now uses sector-excess returns
+  against a 63-day sigma: under the old label a plain "low volatility" rule
+  scored 0.64 AUC out-of-sample and beat every model, so the old number was
+  mostly a volatility artifact. The shipped model (2011+ history, edge
+  weights, pair correlation) scores 0.584 out-of-sample on five half-year
+  walk-forward windows against 0.538 for the old model shape, 0.525 for the
+  volatility rule and 0.541 for pair correlation — a real but small edge.
+  Val AUC 0.600. Details: `reports/gnn_walkforward/WALKFORWARD.md`,
+  `GNN_TEST_REPORT.md/.pdf`, `GNN_NOTEBOOK_WALKTHROUGH.pdf`.
+- GNN test suite: `tests/gnn/`, 77 tests, including no-look-ahead checks for
+  every input series and a guard that no label reads 2026 prices.
 - News corpus: 5,700 headlines from Google News RSS, covering the 3-year
   RL window (2023-07 to 2026-06). Finnhub is wired in too but skipped —
   no API key set on this machine.
@@ -51,7 +60,7 @@ so OHLCV is single-source now. Known limitation, noted in Sources.md.
 
 Copy the whole folder — don't git clone, the data and trained weights are
 git-ignored and only exist on disk. Delete `.venv`, recreate it, install
-requirements, run the tests (expect 83 passed / 8 skipped), then start at
+requirements, run the tests (expect 102 passed / 8 skipped), then start at
 step 1 above. Full instructions in CLAUDE.md under HANDOFF.
 
 If Claude Code isn't available there, the `strongpc/` folder has batch

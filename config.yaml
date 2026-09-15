@@ -64,7 +64,15 @@ features:
   volume_zscore_window: 21
 
 gnn:
-  arch: graphsage                   # graphsage | gat
+  # 2026-09-12 (user decision): adopted walk-forward variant V4 (2011+ history,
+  # GraphConv edge weights, pair features); re-confirmed 2026-09-15 under the
+  # sector-excess / 63d-sigma label — see reports/gnn_walkforward/WALKFORWARD.md.
+  # Out-of-sample AUC 0.584 (CI 0.535-0.636) vs 0.538 for the previous model
+  # shape, 0.525 for the low-volatility rule (beaten in 91% of bootstrap draws)
+  # and 0.541 for the pair-correlation rule. V1/V3/V4 are within seed noise of
+  # each other; V4 kept for its tightest seed spread. Market context (V5-V9)
+  # never helped.
+  arch: graphconv                   # graphsage | gat | graphconv (uses curated edge weights)
   # Selected by scripts/sweep_gnn.py (2026-07-19) on the 5y/z-score/
   # bidirectional dataset (2150 train / 565 val): h64/d0.4/wd1e-3 -> 0.6314,
   # seed-robust (0.616-0.631 across seeds 42/7/2026). All 12 grid points
@@ -76,11 +84,18 @@ gnn:
   # GNN-only extended history (RL/backtest window stays data.start_date).
   # Earliest possible: SONACOMS listed 2021-06-14.
   train_start_date: "2021-07-01"
-  # Shock = |1-day logret| > max(shock_z * prev-day 21d vol, shock_min_move).
+  # Shock = |1-day return| > max(shock_z * previous-day sigma, shock_min_move).
   # Volatility-scaled so low-vol names (Maruti) and high-vol names (TMPV)
   # contribute events at comparable rates; the floor stops calm-period noise.
   shock_z: 2.5
   shock_min_move: 0.02
+  # 2026-09-15 (user decision): shocks measured on sector-EXCESS returns
+  # (stock minus Nifty Auto) against a 63d sigma. With raw returns and the
+  # 21d sigma, "rank by low previous-day volatility" alone scored 0.64 AUC
+  # out-of-sample — a label artifact, not supply-chain propagation. Under
+  # this definition that shortcut scores ~0.52. See src/models/gnn/labels.py.
+  shock_basis: excess               # raw | excess
+  shock_vol_window: 63              # sigma window for the shock threshold
   # Supervise both edge directions (supply shocks travel downstream,
   # demand shocks upstream): doubles pairs 32 -> 64.
   bidirectional_supervision: true
@@ -94,6 +109,18 @@ gnn:
   epochs: 200
   early_stopping_patience: 20
   val_tail_fraction: 0.2            # temporal tail of the train period, never shuffled
+  # Long, split/demerger-adjusted history (scripts/fetch_market_data.py);
+  # SONACOMS is presence-masked before its 2021 listing.
+  history_start: "2011-10-01"
+  # Pair head also sees the pair's trailing 63d return correlation, its
+  # curated edge weight and its direction (supplier->buyer or reverse).
+  pair_features: [rolling_corr, edge_weight, direction]
+  # Market context was tested (V5-V9) and did not help — left off.
+  market_context: none
+  breadth: false
+  # No train/val label may read 2026 prices: the PPO test window starts
+  # 2026-01-02, so it must not influence GNN early stopping either.
+  label_end_date: "2025-12-31"
 
 llm:
   backend: ollama                   # ollama | vllm

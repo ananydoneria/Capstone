@@ -461,14 +461,14 @@ def check_tests(python: Path) -> Check:
     m = re.search(r"(\d+) failed", out); failed = int(m.group(1)) if m else 0
     m = re.search(r"(\d+) skipped", out); skipped = int(m.group(1)) if m else 0
     m = re.search(r"(\d+) error", out); errors = int(m.group(1)) if m else 0
-    ok = failed == 0 and errors == 0 and passed >= 83
+    ok = failed == 0 and errors == 0 and passed >= 102
     detail = f"{passed} passed, {failed} failed, {skipped} skipped, {errors} errors in {dt:.0f}s"
     if ok and skipped == 8:
         detail += " — expected pre-sentiment state"
     elif ok and skipped <= 1:
         detail += " — sentiment already built"
     elif not ok:
-        detail += " — expected 83 passed / 8 skipped (or 90 / 1 after sentiment)"
+        detail += " — expected 102 passed / 8 skipped (or 109 / 1 after sentiment)"
     return Check("tests", "Test suite (pytest tests)", ok, detail, weight=8, required=True,
                  fix="fix_06_regenerate_data.bat if >8 skipped; otherwise read the log",
                  extra={"passed": passed, "failed": failed, "skipped": skipped, "output_tail": out[-1500:]})
@@ -551,9 +551,11 @@ def main() -> int:
     if srv.ok and wanted_model in models and not args.skip_llm:
         checks.append(check_ollama_smoke(wanted_model))
     d = ROOT / "data"
-    checks.append(check_files("data_artifacts", "Price data + features + GNN scores", [
-        d / "raw" / "relationships.csv", d / "processed" / "ohlcv_panel.parquet",
-        d / "processed" / "features.parquet", d / "processed" / "gnn_scores.parquet",
+    checks.append(check_files("data_artifacts", "Price data + features + GNN inputs + GNN scores", [
+        d / "raw" / "relationships.csv", d / "raw" / "corporate_actions.csv",
+        d / "processed" / "ohlcv_panel.parquet", d / "processed" / "features.parquet",
+        d / "processed" / "gnn_node_features.parquet", d / "processed" / "market_context.parquet",
+        d / "processed" / "gnn_scores.parquet",
     ], fix="fix_06_regenerate_data.bat"))
     w = ROOT / "src" / "models" / "gnn" / "weights"
     checks.append(check_files("gnn_weights", "Trained GNN weights", [
