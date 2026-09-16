@@ -20,7 +20,9 @@ source of truth; HOWTORUN.txt is the human-facing copy of the same runbook.
   not retrain.
 - LLM — NEVER trained. It is a pretrained Ollama model used inference-only
   to score sentiment (STEP 3).
-- PPO — the ONLY thing left to train (STEP 5, 4 runs, hours, GPU helps).
+- PPO — the ONLY thing left to train (STEP 5, 4 runs; ~3 min per arm on a
+  modern CPU — measured 12,800 steps/s on an M5 Mac, 2026-09-16. The GPU is
+  for STEP 3's LLM, not for PPO).
 
 ---------------------------------------------------------------------------
 ## HANDOFF: moving this folder to the training PC (stronger machine)
@@ -116,6 +118,9 @@ Run: `.venv\Scripts\python scripts/fetch_finnhub_news.py` then
 ## STEP 3 — LLM sentiment (needs Ollama running; resume-safe per ticker)
 
 Run: `.venv\Scripts\python scripts/run_sentiment.py`
+- This is the slow step: 5,700 headlines, one Ollama call each. Expect
+  roughly 1–2 h on the RTX 3090 (2–4 h on a CPU-only or Apple-silicon box).
+  Resume-safe per ticker, so an interruption costs little.
 - Instant connection error → Ollama isn't serving; start it or ask the user.
 - Item failures printing "-> neutral" are fine (by design, never crash).
 
@@ -126,7 +131,7 @@ Run: `.venv\Scripts\python scripts/build_state.py`
 - If it prints `neutral_placeholder`: STEP 3 produced nothing. Go back.
   Do NOT proceed to STEP 5 past this gate without telling the user.
 
-## STEP 5 — PPO training (the heavy part; 4 runs; hours total)
+## STEP 5 — PPO training (4 runs; ~15 min total on CPU, see timing note above)
 
 Run these one at a time, in this order, waiting for each to finish:
 ```
@@ -138,7 +143,10 @@ Run these one at a time, in this order, waiting for each to finish:
 - Success per run = it prints `saved -> ...logs/ppo_<arm>` and model.zip
   exists there.
 - 2,000,000 timesteps each (config.yaml `rl.total_timesteps`). Do NOT lower
-  it to "save time" — partial runs are worthless for the ablation claim.
+  it — partial runs are worthless for the ablation claim, and there is no
+  time to save: each arm is minutes. If an arm takes over an hour, something
+  is wrong (check `tests_before` passed and torch is not spinning on CUDA
+  init); stop and read the log.
 - If a run crashes: rerun that arm from scratch (it overwrites cleanly).
 - Progress: `tensorboard --logdir src/rl_agent/logs` (optional).
 
@@ -273,7 +281,7 @@ above):**
 **Handoff progress (continued):**
 - **Not done, needs the real workstation:** STEP 1 (Ollama +
   llama3:8b-instruct-q4_K_M), STEP 3 (run_sentiment.py), STEP 4 gate
-  (build_state.py), STEP 5 (PPO ×4 arms, hours). Copy this whole folder over
+  (build_state.py), STEP 5 (PPO ×4 arms, minutes). Copy this whole folder over
   (data/ + weights/ carry the above for free — do NOT rerun REGENERATE
   unless you want fresh yfinance data), delete `.venv`, redo SETUP, then
   pick up at STEP 1.

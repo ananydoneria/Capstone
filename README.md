@@ -50,7 +50,7 @@ Individual stages, in order:
 | 3b. LLM sentiment | `python scripts/run_sentiment.py` | **workstation** — `ollama pull llama3:8b-instruct-q4_K_M` first |
 | 4. State vector | `python scripts/build_state.py` | light |
 | 5/6. Baselines | `python -m src.rl_agent.baselines` | light |
-| 6a. PPO (×4 ablations) | `python scripts/train_ppo.py --ablation full\|no-gnn\|no-sentiment\|neither` | **workstation** — hours |
+| 6a. PPO (×4 ablations) | `python scripts/train_ppo.py --ablation full\|no-gnn\|no-sentiment\|neither` | any machine — ~3 min per arm on CPU (measured 2026-09-16) |
 | 6b. Evaluation | `python scripts/evaluate.py` | light |
 | 7. Report | `python scripts/report.py` | light |
 

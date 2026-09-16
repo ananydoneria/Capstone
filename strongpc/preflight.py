@@ -441,7 +441,7 @@ def check_sleep() -> Check:
     ok = secs == 0
     return Check("sleep", "PC will not sleep during training", ok,
                  "sleep disabled on AC power" if ok else f"sleeps after {secs // 60} min on AC — "
-                 f"a multi-hour PPO run WILL be interrupted",
+                 f"the multi-hour sentiment run WILL be interrupted",
                  weight=3, required=False, fix="fix_09_no_sleep.bat")
 
 

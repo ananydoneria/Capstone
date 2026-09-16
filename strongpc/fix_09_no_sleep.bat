@@ -1,7 +1,7 @@
 @echo off
 setlocal
 echo ================================================================
-echo  FIX 09: stop Windows from sleeping during the multi-hour PPO run
+echo  FIX 09: stop Windows from sleeping during the multi-hour sentiment run
 echo ================================================================
 powercfg /change standby-timeout-ac 0
 powercfg /change hibernate-timeout-ac 0

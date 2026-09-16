@@ -32,7 +32,7 @@ for a key press at the end so the window stays open.
          Runs the whole runbook unattended and logs every stage:
              preflight -> tests -> news backfill -> LLM sentiment (Ollama)
              -> build state (GATE: must say source: llm_cache) -> baselines
-             -> PPO x4 ablation arms (2M steps each, HOURS) -> evaluate
+             -> PPO x4 ablation arms (2M steps each, ~3 min each) -> evaluate
              -> REPORT.md -> tests again -> GNN report -> bundle everything
          Output: reports\strongpc\run_<timestamp>\
              NN_<stage>.log   full log per stage

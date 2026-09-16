@@ -5,7 +5,8 @@ echo ================================================================
 echo  RUN PIPELINE: preflight -^> tests -^> news -^> sentiment -^> state gate
 echo               -^> baselines -^> PPO x4 -^> evaluate -^> report -^> bundle
 echo  Everything is logged under reports\strongpc\run_^<timestamp^>\
-echo  Expect HOURS for the PPO stages. Do not close this window.
+echo  Sentiment scoring is the slow stage (1-3 h on the GPU); PPO is minutes.
+echo  Do not close this window.
 echo ================================================================
 if not exist "%VENV_PY%" ( echo .venv missing - run fix_02_venv.bat first & pause & exit /b 1 )
 "%VENV_PY%" "%ROOT%\strongpc\run_pipeline.py" %*

@@ -38,7 +38,10 @@ Not done (needs the stronger PC, in this order):
 1. Install Ollama, pull llama3:8b-instruct-q4_K_M.
 2. Run sentiment scoring over the news corpus.
 3. Rebuild state.h5 with real sentiment (must say `source: llm_cache`).
-4. Train PPO — 4 ablation runs, 2M timesteps each. Hours.
+4. Train PPO — 4 ablation runs, 2M timesteps each. Minutes, not hours:
+   measured ~12,800 steps/s on an M5 Mac (≈3 min per arm, CPU-only; the
+   tiny MlpPolicy gains nothing from a GPU). Sentiment scoring is the slow
+   step, and the only one that wants the GPU.
 5. Evaluate and write the report.
 
 Note: nothing "trains the LLM". It's a pretrained model used as-is to
